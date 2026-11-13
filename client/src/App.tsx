@@ -1,36 +1,13 @@
-import { useEffect, useState } from "react";
-import { connect, onMessage, sendData } from "./libs/rtc.ts";
-import type { Message } from "./chat/message.ts";
+import { useChatStore } from "./chat/store.ts";
 import JoinForm from "./components/JoinForm.tsx";
 import MessageForm from "./components/MessageForm.tsx";
 import MessageList from "./components/MessageList.tsx";
 
 const App = () => {
-  const [name, setName] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-
-  useEffect(() => {
-    onMessage((data) => setMessages((prev) => [...prev, JSON.parse(data)]));
-  }, []);
-
-  const join = async (name: string) => {
-    setName(name);
-    try {
-      await connect();
-    } catch (error) {
-      console.error("Error connecting to the room:", error);
-    }
-  };
-
-  const send = (text: string) => {
-    if (!name) return false;
-    const message: Message = { name, text };
-    if (!sendData(JSON.stringify(message))) {
-      return false;
-    }
-    setMessages((prev) => [...prev, message]);
-    return true;
-  };
+  const name = useChatStore((state) => state.name);
+  const messages = useChatStore((state) => state.messages);
+  const join = useChatStore((state) => state.join);
+  const send = useChatStore((state) => state.send);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
