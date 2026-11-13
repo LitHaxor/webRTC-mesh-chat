@@ -1,3 +1,4 @@
+import { SendHorizontal } from "lucide-react";
 import { useState } from "react";
 
 type Props = {
@@ -26,9 +27,7 @@ const MessageForm = ({ onSend }: Props) => {
         aria-label="Send"
         className="self-end text-neutral-600 hover:text-neutral-900"
       >
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="size-6">
-          <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z" />
-        </svg>
+        <SendHorizontal className="size-6" />
       </button>
     </form>
   );
