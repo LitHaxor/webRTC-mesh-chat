@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { channel, connect } from "./libs/rtc.ts";
+import { connect, onMessage, sendData } from "./libs/rtc.ts";
 import type { Message } from "./chat/message.ts";
 import JoinForm from "./components/JoinForm.tsx";
 import MessageForm from "./components/MessageForm.tsx";
@@ -10,8 +10,7 @@ const App = () => {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    channel.onmessage = (event) =>
-      setMessages((prev) => [...prev, JSON.parse(event.data)]);
+    onMessage((data) => setMessages((prev) => [...prev, JSON.parse(data)]));
   }, []);
 
   const join = async (name: string) => {
@@ -24,16 +23,18 @@ const App = () => {
   };
 
   const send = (text: string) => {
-    if (!name || channel.readyState !== "open") return false;
+    if (!name) return false;
     const message: Message = { name, text };
-    channel.send(JSON.stringify(message));
+    if (!sendData(JSON.stringify(message))) {
+      return false;
+    }
     setMessages((prev) => [...prev, message]);
     return true;
   };
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
-      <div className="flex h-[640px] max-h-full w-full max-w-sm flex-col rounded-lg bg-white shadow-lg">
+      <div className="flex h-160 max-h-full w-full max-w-sm flex-col rounded-lg bg-white shadow-lg">
         <h1 className="border-b border-neutral-300 px-6 py-5 text-lg font-semibold">
           Chat
         </h1>

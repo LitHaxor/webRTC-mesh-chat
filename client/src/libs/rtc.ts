@@ -10,13 +10,31 @@ const servers: RTCConfiguration = {
   iceCandidatePoolSize: 10,
 };
 
-const pc = new RTCPeerConnection(servers);
 const room = doc(firestore, "rooms", "main");
 
-export const channel = pc.createDataChannel("chat", {
-  negotiated: true,
-  id: 0,
-});
+let handleMessage: (data: string) => void = () => {};
+let stopWaitingForAnswer = () => {};
+
+const createPeer = () => {
+  const pc = new RTCPeerConnection(servers);
+  const channel = pc.createDataChannel("chat", {
+    negotiated: true,
+    id: 0,
+  });
+  channel.onmessage = (event) => handleMessage(event.data);
+  channel.onclose = () => reconnect();
+  return { pc, channel };
+};
+
+let { pc, channel } = createPeer();
+
+const reconnect = () => {
+  stopWaitingForAnswer();
+  channel.onclose = null;
+  pc.close();
+  ({ pc, channel } = createPeer());
+  connect().catch((error) => console.error("Error reconnecting:", error));
+};
 
 const waitForIceGathering = () =>
   new Promise<void>((resolve) => {
@@ -29,6 +47,16 @@ const waitForIceGathering = () =>
       }
     });
   });
+
+export const onMessage = (handler: (data: string) => void) => {
+  handleMessage = handler;
+};
+
+export const sendData = (data: string) => {
+  if (channel.readyState !== "open") return false;
+  channel.send(data);
+  return true;
+};
 
 export const connect = async () => {
   const data = (await getDoc(room)).data();
@@ -46,7 +74,7 @@ export const connect = async () => {
   await waitForIceGathering();
   await setDoc(room, { offer: pc.localDescription!.toJSON(), answer: null });
 
-  onSnapshot(room, async (snapshot) => {
+  stopWaitingForAnswer = onSnapshot(room, async (snapshot) => {
     const answer = snapshot.data()?.answer;
     if (answer && pc.signalingState === "have-local-offer") {
       try {
