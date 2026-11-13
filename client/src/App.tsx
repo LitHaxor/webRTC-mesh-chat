@@ -1,28 +1,42 @@
+import { X } from "lucide-react";
 import { useChatStore } from "./chat/store.ts";
-import JoinForm from "./components/JoinForm.tsx";
+import Lobby from "./components/Lobby.tsx";
 import MessageForm from "./components/MessageForm.tsx";
 import MessageList from "./components/MessageList.tsx";
 
 const App = () => {
-  const name = useChatStore((state) => state.name);
+  const room = useChatStore((state) => state.room);
   const messages = useChatStore((state) => state.messages);
   const join = useChatStore((state) => state.join);
+  const create = useChatStore((state) => state.create);
   const send = useChatStore((state) => state.send);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
       <div className="flex h-160 max-h-full w-full max-w-sm flex-col rounded-lg bg-white shadow-lg">
-        <h1 className="border-b border-neutral-300 px-6 py-5 text-lg font-semibold">
-          Chat
-        </h1>
+        <header className="flex items-center justify-between border-b border-neutral-300 px-6 py-5">
+          <h1 className="truncate text-lg font-semibold">
+            {room ? room.name : "Chat rooms"}
+          </h1>
+          {room && (
+            <button
+              type="button"
+              aria-label="Leave room"
+              onClick={() => window.location.reload()}
+              className="text-neutral-600 hover:text-neutral-900"
+            >
+              <X className="size-6" />
+            </button>
+          )}
+        </header>
 
-        {name ? (
+        {room ? (
           <>
             <MessageList messages={messages} />
             <MessageForm onSend={send} />
           </>
         ) : (
-          <JoinForm onJoin={join} />
+          <Lobby onJoin={join} onCreate={create} />
         )}
       </div>
     </main>

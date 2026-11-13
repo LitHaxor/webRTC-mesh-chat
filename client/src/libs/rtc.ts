@@ -1,4 +1,14 @@
-import { doc, getDoc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import type { Room } from "../chat/room.ts";
 import { firestore } from "./firebase.ts";
 
 const servers: RTCConfiguration = {
@@ -10,8 +20,9 @@ const servers: RTCConfiguration = {
   iceCandidatePoolSize: 10,
 };
 
-const room = doc(firestore, "rooms", "main");
+const rooms = collection(firestore, "rooms");
 
+let roomId = "";
 let handleMessage: (data: string) => void = () => {};
 let stopWaitingForAnswer = () => {};
 
@@ -28,12 +39,16 @@ const createPeer = () => {
 
 let { pc, channel } = createPeer();
 
-const reconnect = () => {
+const reconnect = async () => {
   stopWaitingForAnswer();
   channel.onclose = null;
   pc.close();
   ({ pc, channel } = createPeer());
-  connect().catch((error) => console.error("Error reconnecting:", error));
+  try {
+    await connect(roomId);
+  } catch (error) {
+    console.error("Error reconnecting:", error);
+  }
 };
 
 const waitForIceGathering = () =>
@@ -58,7 +73,22 @@ export const sendData = (data: string) => {
   return true;
 };
 
-export const connect = async () => {
+export const watchRooms = (onChange: (rooms: Room[]) => void) =>
+  onSnapshot(query(rooms, where("answer", "==", null)), (snapshot) =>
+    onChange(
+      snapshot.docs.map((room) => ({ id: room.id, name: room.data().name })),
+    ),
+  );
+
+export const createRoom = async (name: string): Promise<Room> => {
+  const room = doc(rooms);
+  await setDoc(room, { name });
+  return { id: room.id, name };
+};
+
+export const connect = async (id: string) => {
+  roomId = id;
+  const room = doc(rooms, id);
   const data = (await getDoc(room)).data();
 
   // No offer or no answer, create an offer and wait for an answer.
@@ -72,7 +102,11 @@ export const connect = async () => {
 
   await pc.setLocalDescription();
   await waitForIceGathering();
-  await setDoc(room, { offer: pc.localDescription!.toJSON(), answer: null });
+  await setDoc(
+    room,
+    { offer: pc.localDescription!.toJSON(), answer: null },
+    { merge: true },
+  );
 
   stopWaitingForAnswer = onSnapshot(room, async (snapshot) => {
     const answer = snapshot.data()?.answer;

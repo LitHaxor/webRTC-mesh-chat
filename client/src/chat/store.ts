@@ -1,23 +1,34 @@
 import { create } from "zustand";
-import { connect, onMessage, sendData } from "../libs/rtc.ts";
+import { connect, createRoom, onMessage, sendData } from "../libs/rtc.ts";
 import type { Message } from "./message.ts";
+import type { Room } from "./room.ts";
 
 type ChatStore = {
   name: string | null;
+  room: Room | null;
   messages: Message[];
-  join: (name: string) => Promise<void>;
+  join: (name: string, room: Room) => Promise<void>;
+  create: (name: string, roomName: string) => Promise<void>;
   send: (text: string) => boolean;
 };
 
 export const useChatStore = create<ChatStore>()((set, get) => ({
   name: null,
+  room: null,
   messages: [],
-  join: async (name) => {
-    set({ name });
+  join: async (name, room) => {
+    set({ name, room });
     try {
-      await connect();
+      await connect(room.id);
     } catch (error) {
       console.error("Error connecting to the room:", error);
+    }
+  },
+  create: async (name, roomName) => {
+    try {
+      await get().join(name, await createRoom(roomName));
+    } catch (error) {
+      console.error("Error creating the room:", error);
     }
   },
   send: (text) => {
