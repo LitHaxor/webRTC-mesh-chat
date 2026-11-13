@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { channel, connect } from "./libs/rtc.ts";
-
-type Message = {
-  name: string;
-  text: string;
-};
+import type { Message } from "./chat/message.ts";
 
 const App = () => {
   const [name, setName] = useState("");
@@ -13,18 +9,26 @@ const App = () => {
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
-    channel.onmessage = (event) => setMessages((prev) => [...prev, JSON.parse(event.data)]);
+    channel.onmessage = (event) =>
+      setMessages((prev) => [...prev, JSON.parse(event.data)]);
   }, []);
 
-  const join = () => {
+  const join = async () => {
     if (!name.trim()) return;
     setJoined(true);
-    connect();
+    try {
+      await connect();
+    } catch (error) {
+      console.error("Error connecting to the room:", error);
+    }
   };
 
   const send = () => {
     if (!draft.trim() || channel.readyState !== "open") return;
-    const message = { name, text: draft };
+    const message: Message = {
+      name,
+      text: draft,
+    };
     channel.send(JSON.stringify(message));
     setMessages((prev) => [...prev, message]);
     setDraft("");
@@ -56,7 +60,10 @@ const App = () => {
               placeholder="Message"
               className="flex-1 rounded border px-2 py-1"
             />
-            <button type="submit" className="rounded bg-blue-600 px-3 py-1 text-white">
+            <button
+              type="submit"
+              className="rounded bg-blue-600 px-3 py-1 text-white"
+            >
               Send
             </button>
           </form>
@@ -75,7 +82,10 @@ const App = () => {
             placeholder="Your name"
             className="flex-1 rounded border px-2 py-1"
           />
-          <button type="submit" className="rounded bg-blue-600 px-3 py-1 text-white">
+          <button
+            type="submit"
+            className="rounded bg-blue-600 px-3 py-1 text-white"
+          >
             Join
           </button>
         </form>
