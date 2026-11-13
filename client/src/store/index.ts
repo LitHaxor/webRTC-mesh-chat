@@ -1,0 +1,51 @@
+import { create } from "zustand";
+import { onClose, onMessage, onOpen, sendData } from "../libs/rtc.ts";
+import type { ChatEvent, RoomEvent } from "../types/events.ts";
+import { createChatSlice, type ChatSlice } from "./chatSlice.ts";
+import { createRoomSlice, type RoomSlice } from "./roomSlice.ts";
+
+export const useStore = create<RoomSlice & ChatSlice>()((...args) => ({
+  ...createRoomSlice(...args),
+  ...createChatSlice(...args),
+}));
+
+onOpen(() => {
+  const { name } = useStore.getState();
+  if (name) {
+    sendData(JSON.stringify({ type: "joined", userName: name }));
+  }
+});
+
+onMessage((data) => {
+  const event: ChatEvent | RoomEvent = JSON.parse(data);
+  const { events, addEvent } = useStore.getState();
+
+  switch (event.type) {
+    case "joined": {
+      const hasLeft = events.some(
+        (e) => e.type === "left" && e.userName === event.userName,
+      );
+      useStore.setState({ peer: event.userName });
+      addEvent({
+        type: hasLeft ? "rejoined" : "joined",
+        userName: event.userName,
+      });
+      break;
+    }
+    case "sent":
+    case "edited":
+    case "deleted":
+      addEvent(event);
+      break;
+    default:
+      console.warn("Ignoring unexpected event:", event);
+  }
+});
+
+onClose(() => {
+  const { peer, addEvent } = useStore.getState();
+  if (peer) {
+    addEvent({ type: "left", userName: peer });
+  }
+  useStore.setState({ peer: null });
+});

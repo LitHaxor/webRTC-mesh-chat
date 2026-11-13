@@ -1,15 +1,15 @@
 import { X } from "lucide-react";
-import { useChatStore } from "./chat/store.ts";
+import { useStore } from "./store/index.ts";
 import Lobby from "./components/Lobby.tsx";
 import MessageForm from "./components/MessageForm.tsx";
 import MessageList from "./components/MessageList.tsx";
 
 const App = () => {
-  const room = useChatStore((state) => state.room);
-  const messages = useChatStore((state) => state.messages);
-  const join = useChatStore((state) => state.join);
-  const create = useChatStore((state) => state.create);
-  const send = useChatStore((state) => state.send);
+  const room = useStore((state) => state.room);
+  const events = useStore((state) => state.events);
+  const join = useStore((state) => state.join);
+  const create = useStore((state) => state.create);
+  const send = useStore((state) => state.send);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
@@ -32,7 +32,7 @@ const App = () => {
 
         {room ? (
           <>
-            <MessageList messages={messages} />
+            <MessageList events={events} />
             <MessageForm onSend={send} />
           </>
         ) : (

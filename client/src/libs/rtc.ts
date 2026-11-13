@@ -8,7 +8,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import type { Room } from "../chat/room.ts";
+import type { Room } from "../types/room.ts";
 import { firestore } from "./firebase.ts";
 
 const servers: RTCConfiguration = {
@@ -24,6 +24,8 @@ const rooms = collection(firestore, "rooms");
 
 let roomId = "";
 let handleMessage: (data: string) => void = () => {};
+let handleOpen = () => {};
+let handleClose = () => {};
 let stopWaitingForAnswer = () => {};
 
 const createPeer = () => {
@@ -33,7 +35,11 @@ const createPeer = () => {
     id: 0,
   });
   channel.onmessage = (event) => handleMessage(event.data);
-  channel.onclose = () => reconnect();
+  channel.onopen = () => handleOpen();
+  channel.onclose = async () => {
+    handleClose();
+    await reconnect();
+  };
   return { pc, channel };
 };
 
@@ -65,6 +71,14 @@ const waitForIceGathering = () =>
 
 export const onMessage = (handler: (data: string) => void) => {
   handleMessage = handler;
+};
+
+export const onOpen = (handler: () => void) => {
+  handleOpen = handler;
+};
+
+export const onClose = (handler: () => void) => {
+  handleClose = handler;
 };
 
 export const sendData = (data: string) => {

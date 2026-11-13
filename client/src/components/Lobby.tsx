@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react";
-import type { Room } from "../chat/room.ts";
+import type { Room } from "../types/room.ts";
 import { watchRooms } from "../libs/rtc.ts";
 
 type Props = {
   onJoin: (name: string, room: Room) => void;
   onCreate: (name: string, roomName: string) => void;
 };
-
-const inputClass =
-  "min-w-0 rounded border border-neutral-300 px-3 py-2 outline-none focus:border-blue-600";
-
-const buttonClass =
-  "rounded bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700 disabled:bg-neutral-300";
 
 const Lobby = ({ onJoin, onCreate }: Props) => {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -28,7 +22,7 @@ const Lobby = ({ onJoin, onCreate }: Props) => {
         value={name}
         onChange={(event) => setName(event.target.value)}
         placeholder="Your name"
-        className={inputClass}
+        className="rounded border border-neutral-300 px-3 py-2 outline-none focus:border-blue-600"
       />
       {!hasName && (
         <p className="-mt-2 text-sm text-neutral-500">
@@ -47,7 +41,7 @@ const Lobby = ({ onJoin, onCreate }: Props) => {
               type="button"
               disabled={!hasName}
               onClick={() => onJoin(name, room)}
-              className={buttonClass}
+              className="rounded bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700 disabled:bg-neutral-300"
             >
               Join
             </button>
@@ -66,12 +60,12 @@ const Lobby = ({ onJoin, onCreate }: Props) => {
           value={roomName}
           onChange={(event) => setRoomName(event.target.value)}
           placeholder="New room name"
-          className={`${inputClass} flex-1`}
+          className="min-w-0 flex-1 rounded border border-neutral-300 px-3 py-2 outline-none focus:border-blue-600"
         />
         <button
           type="submit"
           disabled={!hasName || !roomName.trim()}
-          className={buttonClass}
+          className="rounded bg-blue-600 px-3 py-2 font-semibold text-white hover:bg-blue-700 disabled:bg-neutral-300"
         >
           Create
         </button>
