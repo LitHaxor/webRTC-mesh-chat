@@ -10,13 +10,28 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173 in two tabs, enter a name in each, and click **Join**.
+Open http://localhost:5173 in two tabs or on two devices, enter a name in each, and click **Join**.
 
 ## Architecture
 
 Peer-to-peer. Messages travel directly between browsers over a WebRTC data channel, so no server sees or stores them.
 
-Signaling uses the browser's `BroadcastChannel`, which only reaches tabs in the same browser. Chatting across devices needs a signaling server.
+Signaling uses one Firestore document, `rooms/main`. The first person to join writes an offer, and the next person writes the answer.
+
+## Project structure
+
+```
+client/src/
+  App.tsx              state and wiring
+  components/
+    JoinForm.tsx       name input
+    MessageList.tsx    messages
+    MessageForm.tsx    message input
+  chat/message.ts      Message type
+  libs/
+    firebase.ts        Firestore setup
+    rtc.ts             peer connection, data channel, signaling
+```
 
 ## Message protocol
 

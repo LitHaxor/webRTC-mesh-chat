@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { channel, connect } from "./libs/rtc.ts";
 import type { Message } from "./chat/message.ts";
+import JoinForm from "./components/JoinForm.tsx";
+import MessageForm from "./components/MessageForm.tsx";
+import MessageList from "./components/MessageList.tsx";
 
 const App = () => {
-  const [name, setName] = useState("");
-  const [joined, setJoined] = useState(false);
+  const [name, setName] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [draft, setDraft] = useState("");
 
   useEffect(() => {
     channel.onmessage = (event) =>
       setMessages((prev) => [...prev, JSON.parse(event.data)]);
   }, []);
 
-  const join = async () => {
-    if (!name.trim()) return;
-    setJoined(true);
+  const join = async (name: string) => {
+    setName(name);
     try {
       await connect();
     } catch (error) {
@@ -23,73 +23,30 @@ const App = () => {
     }
   };
 
-  const send = () => {
-    if (!draft.trim() || channel.readyState !== "open") return;
-    const message: Message = {
-      name,
-      text: draft,
-    };
+  const send = (text: string) => {
+    if (!name || channel.readyState !== "open") return false;
+    const message: Message = { name, text };
     channel.send(JSON.stringify(message));
     setMessages((prev) => [...prev, message]);
-    setDraft("");
+    return true;
   };
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-3 p-6">
-      <h1 className="text-xl font-semibold">Chat</h1>
+    <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
+      <div className="flex h-[640px] max-h-full w-full max-w-sm flex-col rounded-lg bg-white shadow-lg">
+        <h1 className="border-b border-neutral-300 px-6 py-5 text-lg font-semibold">
+          Chat
+        </h1>
 
-      {joined ? (
-        <>
-          <ul>
-            {messages.map((message, index) => (
-              <li key={index}>
-                <b>{message.name}:</b> {message.text}
-              </li>
-            ))}
-          </ul>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              send();
-            }}
-            className="flex gap-2"
-          >
-            <input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Message"
-              className="flex-1 rounded border px-2 py-1"
-            />
-            <button
-              type="submit"
-              className="rounded bg-blue-600 px-3 py-1 text-white"
-            >
-              Send
-            </button>
-          </form>
-        </>
-      ) : (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            join();
-          }}
-          className="flex gap-2"
-        >
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Your name"
-            className="flex-1 rounded border px-2 py-1"
-          />
-          <button
-            type="submit"
-            className="rounded bg-blue-600 px-3 py-1 text-white"
-          >
-            Join
-          </button>
-        </form>
-      )}
+        {name ? (
+          <>
+            <MessageList messages={messages} />
+            <MessageForm onSend={send} />
+          </>
+        ) : (
+          <JoinForm onJoin={join} />
+        )}
+      </div>
     </main>
   );
 };
