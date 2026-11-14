@@ -8,7 +8,7 @@ You need Node 24, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 cd signal-svc
-make install          # creates .venv and installs requirements/dev.txt
+make install          # creates .venv, installs requirements/dev.txt and the git pre-commit hook
 make dev              # FastAPI signaling server on :8080
 
 cd client
@@ -23,17 +23,22 @@ Open http://localhost:5173 in two tabs or on two devices. Enter a name, create a
 - **`/`** uses the FastAPI signaling server (`signal-svc`).
 - **`/old`** uses the earlier Firebase signaling and needs no local server.
 
-Tests:
+Tests and linting:
 
 ```bash
 cd client
 npm test              # unit tests (Vitest)
 npm run test:e2e      # end-to-end tests (Playwright); starts signal-svc and the app itself
+npm run lint          # tsc, ESLint and Prettier
+npm run format        # Prettier, writes the fixes
 
 cd signal-svc
 make test             # room logic unit tests, plus WebSocket tests through FastAPI's TestClient (pytest)
-make lint             # ruff check and format
+make lint             # ruff check and format check
+make format           # ruff, writes the fixes
 ```
+
+Every commit runs [`.pre-commit-config.yaml`](.pre-commit-config.yaml): both `npm run lint` in `client/` and `make lint` in `signal-svc/`, whichever files changed, plus whitespace, YAML/TOML and private-key checks. If one fails, run that project's `format` and commit again. To run them by hand: `signal-svc/.venv/bin/pre-commit run --all-files`.
 
 ## Architecture
 

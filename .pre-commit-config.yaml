@@ -1,0 +1,28 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: signal-svc
+        name: signal-svc lint (ruff)
+        entry: make -C signal-svc lint
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: client
+        name: client lint (tsc, eslint, prettier)
+        entry: npm --prefix client run lint
+        language: system
+        pass_filenames: false
+        always_run: true
