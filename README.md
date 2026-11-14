@@ -14,9 +14,97 @@ Open http://localhost:5173 in two tabs or on two devices. Enter a name, create a
 
 ## Architecture
 
-Peer-to-peer. Messages travel directly between browsers over a WebRTC data channel, so no server sees or stores them.
+I chose **peer-to-peer (option B)**: messages travel directly between the two browsers over a WebRTC data channel.
 
-Signaling uses one Firestore document per room in `rooms/`. The person who creates the room writes an offer, and the person who joins writes the answer. A room is listed in the lobby while it waits for someone to join.
+```mermaid
+flowchart LR
+  subgraph A["Alice's browser"]
+    UIA["React UI<br/>components/"] <--> StoreA["Zustand store<br/>store/"]
+    StoreA <--> RtcA["rtc.ts<br/>RTCPeerConnection"]
+  end
+
+  subgraph B["Bob's browser"]
+    RtcB["rtc.ts<br/>RTCPeerConnection"] <--> StoreB["Zustand store<br/>store/"]
+    StoreB <--> UIB["React UI<br/>components/"]
+  end
+
+  RtcA <-.->|"offer / answer"| FS[("Firestore<br/>rooms/")]
+  FS <-.->|"offer / answer"| RtcB
+  RtcA <-.-> STUN(["Google STUN servers<br/>public address lookup"])
+  STUN <-.-> RtcB
+  RtcA <==>|"WebRTC data channel<br/>chat and room events as JSON"| RtcB
+```
+
+Solid lines carry chat traffic; dotted lines are only used while connecting.
+
+### Why peer-to-peer
+
+- **No server in the message path.** Chat messages, edits and deletes go straight from one browser to the other, so no server sees, stores or has to relay them.
+- **Nothing to run for the chat itself.** There's no WebSocket server to host, scale or keep alive. The only backend is the small amount of signaling below.
+- **It's the brief's preferred option,** and it shows the parts of real-time communication that a relay hides: offers and answers, ICE, connection state, and what happens when a peer disappears.
+
+### Why Firestore for signaling
+
+Two browsers need a shared place to swap a WebRTC offer and answer before they can talk directly. I used Firestore for that instead of writing a signaling server:
+
+- **Realtime out of the box.** `onSnapshot` tells the room's creator the moment an answer arrives, which is all a signaling channel needs.
+- **No backend code to write or deploy.** The client talks to Firestore directly, so the project is a single front-end app.
+- **The signaling data doubles as the room list.** Each room is one document in `rooms/` holding its name, the offer and the answer. The lobby lists rooms whose answer is still empty, meaning they're waiting for someone to join.
+
+### Connecting a room
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Alice
+  participant A as Alice's browser
+  participant FS as Firestore
+  participant B as Bob's browser
+  actor Bob
+
+  Alice->>A: Create room "Standup"
+  A->>FS: Write room document with its name
+  A->>A: Create offer, wait for ICE gathering
+  A->>FS: Write offer, answer = null
+  Note over FS: Listed in every lobby while answer is null
+  A->>FS: Listen for changes to the room
+  Bob->>B: Join "Standup"
+  B->>FS: Read the room
+  FS-->>B: Offer
+  B->>B: Create answer, wait for ICE gathering
+  B->>FS: Write answer
+  FS-->>A: Room changed, answer arrived
+  A->>A: Apply answer
+  Note over A,B: Data channel opens. From here on Firestore is not involved.
+  A-)B: joined (Alice)
+  B-)A: joined (Bob)
+  Alice->>A: Send "hi"
+  A-)B: sent (message)
+```
+
+Both sides wait for ICE gathering to finish before writing, so each offer and answer already contains every network candidate. That keeps signaling to two writes per connection, with no separate candidate exchange.
+
+### Leaving and rejoining
+
+```mermaid
+sequenceDiagram
+  participant A as Alice's browser
+  participant FS as Firestore
+  participant B as Bob's browser
+
+  B--xA: Bob reloads or closes the tab, the channel closes
+  A->>A: Record "Bob left", drop the old connection
+  A->>A: Create a new connection and offer
+  A->>FS: Write offer to the same room, answer = null
+  Note over FS: Room is listed in the lobby again
+  B->>FS: Bob joins the room again and writes an answer
+  FS-->>A: Answer arrived
+  Note over A,B: New data channel opens
+  B-)A: joined (Bob)
+  A->>A: Bob left earlier, so record "Bob rejoined"
+```
+
+Alice never has to reload. Whoever stays in the room re-opens it for the next person.
 
 ## Project structure
 
