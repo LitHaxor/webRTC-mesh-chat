@@ -4,6 +4,7 @@ import {
   type BrowserContext,
   type Page,
 } from "@playwright/test";
+import type { Message } from "../src/types/message.ts";
 
 export { expect };
 
@@ -80,4 +81,19 @@ export const startChat = async (newPerson: NewPerson, path = "/") => {
   await expect(chatOf(bob)).toContainText("Alice joined");
 
   return { alice, bob, roomName };
+};
+
+export const savedTexts = async (page: Page) => {
+  const { origins } = await page.context().storageState({ indexedDB: true });
+  const stores = origins.flatMap(({ indexedDB = [] }) =>
+    indexedDB.flatMap((database) => database.stores),
+  );
+  const records = stores.find(({ name }) => name === "messages")?.records ?? [];
+  const messages = records.map(
+    ({ value }) => (value as { message: Message }).message,
+  );
+
+  return messages
+    .sort((a, b) => a.createdAt - b.createdAt)
+    .map((message) => (message.deletedAt ? "(deleted)" : message.text));
 };

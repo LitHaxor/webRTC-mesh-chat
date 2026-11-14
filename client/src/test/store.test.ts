@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { chatDatabase } from "../libs/indexdb.ts";
 import { useStore } from "../store/index.ts";
 import type { ChatEvent } from "../types/events.ts";
 import {
@@ -10,6 +11,10 @@ import {
   onOpen,
   sendData,
 } from "../libs/rtc.ts";
+
+vi.mock("../libs/indexdb.ts", () => ({
+  chatDatabase: { save: vi.fn(), load: vi.fn() },
+}));
 
 vi.mock("../libs/rtc.ts", () => ({
   createRoom: vi.fn(),
@@ -64,6 +69,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.mocked(chatDatabase.save).mockResolvedValue();
+  vi.mocked(chatDatabase.load).mockResolvedValue([]);
   useStore.setState({
     name: "Alice",
     peer: null,
@@ -338,4 +345,80 @@ it("remembers which of your messages the other person has seen", () => {
   receive(JSON.stringify({ type: "read", messageId: "m1" }));
 
   expect(useStore.getState().seenId).toBe("m1");
+});
+
+it("saves a message you send", () => {
+  vi.mocked(sendData).mockReturnValue(true);
+  useStore.getState().send("hi");
+  const [sent] = useStore.getState().events as ChatEvent[];
+
+  expect(chatDatabase.save).toHaveBeenCalledWith(
+    "room-1",
+    sent.payload.message,
+  );
+});
+
+it("does not save a message that could not be sent", () => {
+  vi.mocked(sendData).mockReturnValue(false);
+  useStore.getState().send("hi");
+
+  expect(chatDatabase.save).not.toHaveBeenCalled();
+});
+
+it("saves a message you receive", () => {
+  receive(JSON.stringify(sentByBob));
+
+  expect(chatDatabase.save).toHaveBeenCalledWith(
+    "room-1",
+    sentByBob.payload.message,
+  );
+});
+
+it("saves the newest version of an edited, then deleted message", () => {
+  receive(JSON.stringify(sentByBob));
+  receive(JSON.stringify(editedByBob({ text: "hello again", editedAt: 2 })));
+  receive(JSON.stringify(deletedByBob));
+
+  expect(chatDatabase.save).toHaveBeenCalledTimes(3);
+  expect(chatDatabase.save).toHaveBeenLastCalledWith(
+    "room-1",
+    deletedByBob.payload.message,
+  );
+});
+
+it("does not save an edit that claims a different author", () => {
+  receive(JSON.stringify(sentByBob));
+  receive(JSON.stringify(editedByBob({ userId: "mallory", text: "hacked" })));
+
+  expect(chatDatabase.save).toHaveBeenCalledTimes(1);
+});
+
+it("loads the room's saved messages when you join", async () => {
+  useStore.setState({ name: null, room: null });
+  vi.mocked(chatDatabase.load).mockResolvedValue([sentByBob.payload.message]);
+
+  await useStore.getState().join("Alice", standup);
+
+  expect(chatDatabase.load).toHaveBeenCalledWith("room-1");
+  expect(useStore.getState().events).toEqual([sentByBob]);
+  expect(joinRoom).toHaveBeenCalledWith("room-1");
+});
+
+it("joins with no history when saved messages cannot be loaded", async () => {
+  vi.mocked(chatDatabase.load).mockRejectedValue(new Error("blocked"));
+
+  await useStore.getState().join("Alice", standup);
+
+  expect(useStore.getState().events).toEqual([]);
+  expect(joinRoom).toHaveBeenCalledWith("room-1");
+  expect(console.error).toHaveBeenCalled();
+});
+
+it("keeps the message on screen when it cannot be saved", async () => {
+  vi.mocked(chatDatabase.save).mockRejectedValue(new Error("quota"));
+
+  receive(JSON.stringify(sentByBob));
+
+  await vi.waitFor(() => expect(console.error).toHaveBeenCalled());
+  expect(useStore.getState().events).toEqual([sentByBob]);
 });

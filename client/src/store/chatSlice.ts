@@ -1,4 +1,5 @@
 import type { StateCreator } from "zustand";
+import { chatDatabase } from "../libs/indexdb.ts";
 import { sendData } from "../libs/rtc.ts";
 import type {
   ChatEvent,
@@ -9,7 +10,31 @@ import type {
 import type { Message } from "../types/message.ts";
 import type { RoomSlice } from "./roomSlice.ts";
 
-const userId = crypto.randomUUID();
+const USER_ID_KEY = "userId";
+
+const loadUserId = () => {
+  try {
+    const saved = sessionStorage.getItem(USER_ID_KEY);
+    if (saved) {
+      return saved;
+    }
+    const created = crypto.randomUUID();
+    sessionStorage.setItem(USER_ID_KEY, created);
+    return created;
+  } catch {
+    return crypto.randomUUID();
+  }
+};
+
+const userId = loadUserId();
+
+const persist = async (roomId: string, message: Message) => {
+  try {
+    await chatDatabase.save(roomId, message);
+  } catch (error) {
+    console.error("Error saving message:", error);
+  }
+};
 
 const TYPING_INTERVAL_MS = 2000;
 let lastTypingAt = 0;
@@ -81,7 +106,12 @@ export const createChatSlice: StateCreator<
     events: [],
     typing: null,
     seenId: null,
-    addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
+    addEvent: (event) => {
+      set((state) => ({ events: [...state.events, event] }));
+      if ("payload" in event) {
+        void persist(event.sessionId, event.payload.message);
+      }
+    },
     updateMessage: (message) => {
       const original = findMessage(get().events, message.id);
       if (original?.userId !== message.userId) {
@@ -99,6 +129,11 @@ export const createChatSlice: StateCreator<
           return { ...event, payload: { ...event.payload, message } };
         }),
       }));
+
+      const { room } = get();
+      if (room) {
+        void persist(room.id, message);
+      }
 
       return true;
     },

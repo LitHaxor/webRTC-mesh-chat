@@ -306,3 +306,58 @@ Both reuse the chat event shape and point at the original message by `payload.me
 - **`edited`:** carries the whole message with the new `text` and an `editedAt` time; `createdAt` keeps the original time. The receiver replaces the message with that `id`, and both people see "(edited)" next to it.
 - **`deleted`:** carries the message with `text` emptied and a `deletedAt` time. The receiver keeps the entry and shows "Message deleted" in its place, so both people can see that something was removed. A deleted message can't be edited again.
 - **Ownership:** a receiver ignores an edit or delete whose `payload.message.userId` does not match the original message's `userId`, so people can only change their own messages.
+
+## Trade-offs and known issues
+
+### When the other person isn't there
+
+Messages only travel over the data channel between the two browsers, and each browser keeps its own copy in IndexedDB. No server holds a message, so nothing can be delivered to someone who isn't connected.
+
+```mermaid
+sequenceDiagram
+  participant DA as Alice's IndexedDB
+  participant A as Alice's browser
+  participant S as signal-svc
+  participant B as Bob's browser
+  participant DB as Bob's IndexedDB
+
+  A-)B: "hi", over the data channel
+  A->>DA: save "hi"
+  B->>DB: save "hi"
+  Note over B: Bob closes the tab
+  B--xA: pagehide closes the peer connection
+  B--xS: the WebSocket closes
+  A->>A: record "Bob left", re-open the room
+  A->>S: offer, so the room is listed again
+  Note over A: Alice types "are you there?" and presses Send
+  Note over A: no open channel: nothing is sent, and the draft stays
+  Note over B: Bob opens the app again
+  B->>DB: load the room's messages
+  DB-->>B: "hi"
+  B->>S: join, then answer
+  S-->>A: answer
+  Note over A,B: the channel is open again, and nothing went missing because nothing could be sent
+```
+
+```mermaid
+flowchart TD
+  away["Bob's tab is closed"] --> ours["This app: peer-to-peer, history only in the browsers"]
+  away --> mailbox["Alternative: a server mailbox, the way WhatsApp delivers"]
+  ours --> o1["Alice can't send until someone is there"]
+  ours --> o2["No server ever stores or sees a message"]
+  ours --> o3["Bob gets back what his own browser saved"]
+  mailbox --> m1["Alice can send: the server holds it until Bob is back"]
+  mailbox --> m2["The server stores messages, so they need end-to-end encryption"]
+  mailbox --> m3["More to build and run: storage, retention, delivery receipts"]
+```
+
+| Situation | What happens |
+|---|---|
+| Bob's tab is open but in the background | The channel stays open. Messages arrive and are saved, and Alice's "Seen" tick waits until Bob looks at the tab. |
+| Bob closes the tab or navigates away | The `pagehide` handler closes the peer connection, so Alice sees "Bob left" at once and the room is listed again. Until someone joins, Send does nothing and keeps the draft, without saying why. |
+| Bob comes back to the same room | IndexedDB restores everything his browser had saved, edits and deletes included, and he can still edit his own messages: his user id lives in `sessionStorage`, which survives a reload. |
+| Both people leave | signal-svc deletes the room. Each browser still has the messages in IndexedDB, but nobody can join that room again, so that history can't be reached. |
+| Bob's browser crashes or loses its network | There's no `pagehide`, so the peer connection isn't closed cleanly. signal-svc notices the WebSocket drop, but the data channel may not report itself closed for a long time (in testing, not within 60 seconds), so Alice sees "Bob left" late. |
+| Bob reloads a few milliseconds after an edit or delete | The IndexedDB write may not have finished, so his copy can miss that change, while Alice's has it. |
+
+I chose peer-to-peer because the brief prefers it and because it keeps every message off the server. The cost is in this table: both people have to be online, and history is only as complete as each browser's copy.
