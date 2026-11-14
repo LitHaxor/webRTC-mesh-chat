@@ -18,7 +18,7 @@ onOpen(() => {
 
 onMessage((data) => {
   const event: ChatEvent | RoomEvent = JSON.parse(data);
-  const { events, addEvent } = useStore.getState();
+  const { events, addEvent, updateMessage } = useStore.getState();
 
   switch (event.type) {
     case "joined": {
@@ -34,9 +34,10 @@ onMessage((data) => {
       break;
     }
     case "sent":
-    case "edited":
-    case "deleted":
       addEvent(event);
+      break;
+    case "edited":
+      updateMessage(event.payload.message);
       break;
     default:
       console.warn("Ignoring unexpected event:", event);

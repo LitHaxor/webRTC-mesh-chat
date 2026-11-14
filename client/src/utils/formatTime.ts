@@ -15,10 +15,7 @@ export const formatTime = (time: number) =>
   });
 
 export const formatRelativeTime = (time: number, now: number) => {
-  const elapsed = time - now;
-  const [unit, size] = units.find(([, size]) => Math.abs(elapsed) >= size) ?? [
-    "second",
-    1_000,
-  ];
-  return relativeTime.format(Math.trunc(elapsed / size), unit);
+  const age = Math.max(now - time, 0);
+  const [unit, size] = units.find(([, size]) => age >= size) ?? ["second", 1_000];
+  return relativeTime.format(-Math.trunc(age / size), unit);
 };

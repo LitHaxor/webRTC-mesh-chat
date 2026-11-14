@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { useStore } from "../store/index.ts";
+import type { ChatEvent } from "../types/events.ts";
 import {
   connect,
   createRoom,
@@ -38,6 +39,15 @@ const sentByBob = {
     metadata: {},
   },
 };
+
+const editedByBob = (changes: object) => ({
+  type: "edited",
+  sessionId: "room-1",
+  payload: {
+    message: { ...sentByBob.payload.message, ...changes },
+    metadata: {},
+  },
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -156,4 +166,61 @@ it("tracks when someone joins, leaves and rejoins", () => {
     { type: "left", userName: "Bob", createdAt: expect.any(Number) },
     { type: "rejoined", userName: "Bob", createdAt: expect.any(Number) },
   ]);
+});
+
+it("edits your own message and tells the other person", () => {
+  vi.mocked(sendData).mockReturnValue(true);
+  useStore.getState().send("hi");
+  const [sent] = useStore.getState().events as ChatEvent[];
+  const { id, createdAt } = sent.payload.message;
+
+  expect(useStore.getState().edit(id, "hello")).toBe(true);
+
+  const [edited] = useStore.getState().events as ChatEvent[];
+  expect(edited.payload.message).toMatchObject({
+    id,
+    text: "hello",
+    createdAt,
+    editedAt: expect.any(Number),
+  });
+  expect(sendData).toHaveBeenLastCalledWith(
+    expect.stringContaining('"type":"edited"'),
+  );
+});
+
+it("cannot edit someone else's message", () => {
+  receive(JSON.stringify(sentByBob));
+
+  expect(useStore.getState().edit("m1", "changed")).toBe(false);
+  expect(useStore.getState().events).toEqual([sentByBob]);
+});
+
+it("keeps your message unchanged when the edit could not be sent", () => {
+  vi.mocked(sendData).mockReturnValue(true);
+  useStore.getState().send("hi");
+  const [sent] = useStore.getState().events as ChatEvent[];
+  vi.mocked(sendData).mockReturnValue(false);
+
+  expect(useStore.getState().edit(sent.payload.message.id, "hello")).toBe(false);
+  expect(useStore.getState().events).toEqual([sent]);
+});
+
+it("applies an edit from the other person to the right message", () => {
+  receive(JSON.stringify({ type: "joined", userName: "Bob" }));
+  receive(JSON.stringify(sentByBob));
+  receive(JSON.stringify(editedByBob({ text: "hello again", editedAt: 2 })));
+
+  const [joined, message] = useStore.getState().events;
+  expect(joined).toMatchObject({ type: "joined", userName: "Bob" });
+  expect((message as ChatEvent).payload.message).toMatchObject({
+    text: "hello again",
+    editedAt: 2,
+  });
+});
+
+it("ignores an edit that claims a different author", () => {
+  receive(JSON.stringify(sentByBob));
+  receive(JSON.stringify(editedByBob({ userId: "mallory", text: "hacked" })));
+
+  expect(useStore.getState().events).toEqual([sentByBob]);
 });

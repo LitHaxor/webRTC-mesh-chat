@@ -5,6 +5,7 @@ import Lobby from "./components/Lobby.tsx";
 import MessageForm from "./components/MessageForm.tsx";
 import MessageList from "./components/MessageList.tsx";
 import ParticipantList from "./components/ParticipantList.tsx";
+import { getParticipants } from "./utils/participants.ts";
 
 const App = () => {
   const name = useStore((state) => state.name);
@@ -16,7 +17,7 @@ const App = () => {
   const send = useStore((state) => state.send);
   const [tab, setTab] = useState<"participants" | "chat">("chat");
 
-  const participants = [name, peer].filter((person) => person !== null);
+  const participants = name ? getParticipants(name, peer, events) : [];
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
