@@ -1,60 +1,41 @@
-import { expect, test, type Page } from "@playwright/test";
+import {
+  chatOf,
+  expect,
+  messageRow,
+  sendMessage,
+  startChat,
+  test,
+} from "./helpers.ts";
 
-const enterName = async (page: Page, name: string) => {
-  await page.goto("/");
-  await page.getByPlaceholder("Your name").fill(name);
-};
+test("two people chat in both directions", async ({ newPerson }) => {
+  const { alice, bob } = await startChat(newPerson);
 
-const joinRoom = async (page: Page, roomName: string) => {
-  await page
-    .getByRole("listitem")
-    .filter({ hasText: roomName })
-    .getByRole("button", { name: "Join" })
-    .click();
-  await expect(page.getByRole("heading", { name: roomName })).toBeVisible();
-};
+  await sendMessage(bob, "hi alice");
+  await expect(chatOf(alice)).toContainText("hi alice");
 
-test("two people chat in a room one of them created", async ({ browser }) => {
-  const roomName = `Room ${Date.now()}`;
-  const alice = await browser.newPage();
-  const bob = await browser.newPage();
+  await sendMessage(alice, "hi bob");
+  await expect(chatOf(bob)).toContainText("hi bob");
+});
 
-  await enterName(alice, "Alice");
-  await alice.getByPlaceholder("New room name").fill(roomName);
-  await alice.getByRole("button", { name: "Create" }).click();
-  await expect(alice.getByRole("heading", { name: roomName })).toBeVisible();
+test("each message shows who sent it and how long ago", async ({
+  newPerson,
+}) => {
+  const { alice, bob } = await startChat(newPerson);
 
-  await enterName(bob, "Bob");
-  await joinRoom(bob, roomName);
-  await expect(alice.getByRole("list")).toContainText("Bob joined");
+  await sendMessage(bob, "hello there");
+  const row = messageRow(alice, "hello there");
 
-  await bob.getByPlaceholder("Write to everyone").fill("hi alice");
-  await bob.getByRole("button", { name: "Send" }).click();
-  await expect(alice.getByRole("list")).toContainText("hi alice");
+  await expect(row).toContainText("Bob");
+  await expect(row).toContainText(/seconds? ago/);
+  await expect(row.locator("time")).toHaveAttribute("title", /^\d{2}:\d{2}$/);
+});
 
-  await alice.getByPlaceholder("Write to everyone").fill("hi bob");
-  await alice.getByRole("button", { name: "Send" }).click();
-  await expect(bob.getByRole("list")).toContainText("hi bob");
+test("links in messages can be opened", async ({ newPerson }) => {
+  const { alice, bob } = await startChat(newPerson);
 
-  const aliceMessage = alice.getByRole("listitem").filter({ hasText: "hi bob" });
-  await aliceMessage.hover();
-  await aliceMessage.getByRole("button", { name: "Edit message" }).click();
-  await alice.getByRole("textbox", { name: "Edit message" }).fill("hi bob, edited");
-  await alice.keyboard.press("Enter");
-  const bobsCopy = bob.getByRole("listitem").filter({ hasText: "hi bob, edited" });
-  await expect(bobsCopy).toContainText("(edited)");
-  await expect(
-    bobsCopy.getByRole("button", { name: "Edit message" }),
-  ).toHaveCount(0);
+  await sendMessage(bob, "notes: https://example.com/doc");
+  const link = alice.getByRole("link", { name: "https://example.com/doc" });
 
-  const bobMessage = bob.getByRole("listitem").filter({ hasText: "hi alice" });
-  await bobMessage.hover();
-  await bobMessage.getByRole("button", { name: "Delete message" }).click();
-  await expect(alice.getByRole("list")).toContainText("Message deleted");
-  await expect(alice.getByRole("list")).not.toContainText("hi alice");
-
-  await enterName(bob, "Bob");
-  await expect(alice.getByRole("list")).toContainText("Bob left");
-  await joinRoom(bob, roomName);
-  await expect(alice.getByRole("list")).toContainText("Bob rejoined");
+  await expect(link).toHaveAttribute("href", "https://example.com/doc");
+  await expect(link).toHaveAttribute("target", "_blank");
 });

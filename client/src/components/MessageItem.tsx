@@ -60,7 +60,9 @@ const MessageItem = ({ message, isOwn, now, onEdit, onDelete }: Props) => {
               <Trash2 className="size-4" />
             </button>
           )}
-          {message.editedAt !== undefined && !isDeleted && <span>(edited)</span>}
+          {message.editedAt !== undefined && !isDeleted && (
+            <span>(edited)</span>
+          )}
           <time title={formatTime(message.createdAt)}>
             {formatRelativeTime(message.createdAt, now)}
           </time>

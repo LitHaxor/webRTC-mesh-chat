@@ -1,15 +1,5 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  query,
-  setDoc,
-  updateDoc,
-  where,
-} from "firebase/firestore";
 import type { Room } from "../types/room.ts";
-import { firestore } from "./firebase.ts";
+import { signaling } from "./signaling/index.ts";
 
 const servers: RTCConfiguration = {
   iceServers: [
@@ -20,7 +10,7 @@ const servers: RTCConfiguration = {
   iceCandidatePoolSize: 10,
 };
 
-const rooms = collection(firestore, "rooms");
+const ICE_GATHERING_TIMEOUT_MS = 2000;
 
 let roomId = "";
 let handleMessage: (data: string) => void = () => {};
@@ -45,13 +35,15 @@ const createPeer = () => {
 
 let { pc, channel } = createPeer();
 
+window.addEventListener("pagehide", () => pc.close());
+
 const reconnect = async () => {
   stopWaitingForAnswer();
   channel.onclose = null;
   pc.close();
   ({ pc, channel } = createPeer());
   try {
-    await connect(roomId);
+    await hostRoom(roomId);
   } catch (error) {
     console.error("Error reconnecting:", error);
   }
@@ -62,12 +54,24 @@ const waitForIceGathering = () =>
     if (pc.iceGatheringState === "complete") {
       return resolve();
     }
+    setTimeout(resolve, ICE_GATHERING_TIMEOUT_MS);
     pc.addEventListener("icegatheringstatechange", () => {
       if (pc.iceGatheringState === "complete") {
         resolve();
       }
     });
   });
+
+const applyAnswer = async (answer: RTCSessionDescriptionInit) => {
+  if (pc.signalingState !== "have-local-offer") {
+    return;
+  }
+  try {
+    await pc.setRemoteDescription(answer);
+  } catch (error) {
+    console.error("Error setting remote description:", error);
+  }
+};
 
 export const onMessage = (handler: (data: string) => void) => {
   handleMessage = handler;
@@ -88,48 +92,26 @@ export const sendData = (data: string) => {
 };
 
 export const watchRooms = (onChange: (rooms: Room[]) => void) =>
-  onSnapshot(query(rooms, where("answer", "==", null)), (snapshot) =>
-    onChange(
-      snapshot.docs.map((room) => ({ id: room.id, name: room.data().name })),
-    ),
-  );
+  signaling.watchRooms(onChange);
 
-export const createRoom = async (name: string): Promise<Room> => {
-  const room = doc(rooms);
-  await setDoc(room, { name });
-  return { id: room.id, name };
-};
+export const createRoom = (name: string) => signaling.createRoom(name);
 
-export const connect = async (id: string) => {
+export const hostRoom = async (id: string) => {
   roomId = id;
-  const room = doc(rooms, id);
-  const data = (await getDoc(room)).data();
-
-  // No offer or no answer, create an offer and wait for an answer.
-  if (data?.offer && !data.answer) {
-    await pc.setRemoteDescription(data.offer);
-    await pc.setLocalDescription();
-    await waitForIceGathering();
-    await updateDoc(room, { answer: pc.localDescription!.toJSON() });
-    return;
-  }
-
   await pc.setLocalDescription();
   await waitForIceGathering();
-  await setDoc(
-    room,
-    { offer: pc.localDescription!.toJSON(), answer: null },
-    { merge: true },
+  stopWaitingForAnswer = await signaling.publishOffer(
+    id,
+    pc.localDescription!.toJSON(),
+    applyAnswer,
   );
+};
 
-  stopWaitingForAnswer = onSnapshot(room, async (snapshot) => {
-    const answer = snapshot.data()?.answer;
-    if (answer && pc.signalingState === "have-local-offer") {
-      try {
-        await pc.setRemoteDescription(answer);
-      } catch (error) {
-        console.error("Error setting remote description:", error);
-      }
-    }
-  });
+export const joinRoom = async (id: string) => {
+  roomId = id;
+  const offer = await signaling.fetchOffer(id);
+  await pc.setRemoteDescription(offer);
+  await pc.setLocalDescription();
+  await waitForIceGathering();
+  await signaling.publishAnswer(id, pc.localDescription!.toJSON());
 };

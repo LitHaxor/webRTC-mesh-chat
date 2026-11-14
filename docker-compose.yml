@@ -1,0 +1,7 @@
+name: realtime-chat
+
+services:
+  signal-svc:
+    build: ./signal-svc
+    ports:
+      - "8080:8080"

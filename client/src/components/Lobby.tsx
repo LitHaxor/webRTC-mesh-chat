@@ -35,7 +35,10 @@ const Lobby = ({ onJoin, onCreate }: Props) => {
           <li className="p-3 text-neutral-500">No active rooms</li>
         )}
         {rooms.map((room) => (
-          <li key={room.id} className="flex items-center justify-between gap-3 p-3">
+          <li
+            key={room.id}
+            className="flex items-center justify-between gap-3 p-3"
+          >
             <span className="truncate">{room.name}</span>
             <button
               type="button"

@@ -1,5 +1,5 @@
 import type { StateCreator } from "zustand";
-import { connect, createRoom } from "../libs/rtc.ts";
+import { createRoom, hostRoom, joinRoom } from "../libs/rtc.ts";
 import type { Room } from "../types/room.ts";
 import type { ChatSlice } from "./chatSlice.ts";
 
@@ -16,21 +16,23 @@ export const createRoomSlice: StateCreator<
   [],
   [],
   RoomSlice
-> = (set, get) => ({
+> = (set) => ({
   name: null,
   peer: null,
   room: null,
   join: async (name, room) => {
     set({ name, room });
     try {
-      await connect(room.id);
+      await joinRoom(room.id);
     } catch (error) {
-      console.error("Error connecting to the room:", error);
+      console.error("Error joining the room:", error);
     }
   },
   create: async (name, roomName) => {
     try {
-      await get().join(name, await createRoom(roomName));
+      const room = await createRoom(roomName);
+      set({ name, room });
+      await hostRoom(room.id);
     } catch (error) {
       console.error("Error creating the room:", error);
     }

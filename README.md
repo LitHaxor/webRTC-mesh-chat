@@ -4,13 +4,36 @@ Peer-to-peer chat built with React, TypeScript and WebRTC data channels.
 
 ## Getting started
 
+You need Node 24, Python 3.12 and [uv](https://docs.astral.sh/uv/).
+
 ```bash
+cd signal-svc
+make install          # creates .venv and installs requirements/dev.txt
+make dev              # FastAPI signaling server on :8080
+
 cd client
 npm install
-npm run dev
+npm run dev           # app on :5173
 ```
 
+Or run the signaling server in Docker instead: `docker compose up --build signal-svc`.
+
 Open http://localhost:5173 in two tabs or on two devices. Enter a name, create a room in one, and join it from the other.
+
+- **`/`** uses the FastAPI signaling server (`signal-svc`).
+- **`/old`** uses the earlier Firebase signaling and needs no local server.
+
+Tests:
+
+```bash
+cd client
+npm test              # unit tests (Vitest)
+npm run test:e2e      # end-to-end tests (Playwright); starts signal-svc and the app itself
+
+cd signal-svc
+make test             # room logic unit tests, plus WebSocket tests through FastAPI's TestClient (pytest)
+make lint             # ruff check and format
+```
 
 ## Architecture
 
@@ -28,8 +51,8 @@ flowchart LR
     StoreB <--> UIB["React UI<br/>components/"]
   end
 
-  RtcA <-.->|"offer / answer"| FS[("Firestore<br/>rooms/")]
-  FS <-.->|"offer / answer"| RtcB
+  RtcA <-.->|"offer / answer"| SIG["signal-svc<br/>FastAPI, WebSocket"]
+  SIG <-.->|"offer / answer"| RtcB
   RtcA <-.-> STUN(["Google STUN servers<br/>public address lookup"])
   STUN <-.-> RtcB
   RtcA <==>|"WebRTC data channel<br/>chat and room events as JSON"| RtcB
@@ -40,16 +63,22 @@ Solid lines carry chat traffic; dotted lines are only used while connecting.
 ### Why peer-to-peer
 
 - **No server in the message path.** Chat messages, edits and deletes go straight from one browser to the other, so no server sees, stores or has to relay them.
-- **Nothing to run for the chat itself.** There's no WebSocket server to host, scale or keep alive. The only backend is the small amount of signaling below.
+- **The server stays small.** It only helps two browsers find each other; once they're connected it carries no chat traffic at all.
 - **It's the brief's preferred option,** and it shows the parts of real-time communication that a relay hides: offers and answers, ICE, connection state, and what happens when a peer disappears.
 
-### Why Firestore for signaling
+### Signaling: a FastAPI server, with Firebase kept on `/old`
 
-Two browsers need a shared place to swap a WebRTC offer and answer before they can talk directly. I used Firestore for that instead of writing a signaling server:
+Two browsers need a shared place to swap a WebRTC offer and answer before they can talk directly. The app has two ways to do that, behind one small interface (`Signaling` in [`client/src/types/signaling.ts`](client/src/types/signaling.ts)). [`libs/signaling/index.ts`](client/src/libs/signaling/index.ts) picks one from the URL path, and the rest of the app doesn't know which it is using.
 
-- **Realtime out of the box.** `onSnapshot` tells the room's creator the moment an answer arrives, which is all a signaling channel needs.
-- **No backend code to write or deploy.** The client talks to Firestore directly, so the project is a single front-end app.
-- **The signaling data doubles as the room list.** Each room is one document in `rooms/` holding its name, the offer and the answer. The lobby lists rooms whose answer is still empty, meaning they're waiting for someone to join.
+**`/`: `signal-svc`, a FastAPI WebSocket server** on asyncio and Uvicorn.
+
+- **It's what the brief expects:** a lightweight signaling server, about 300 lines of Python.
+- **It knows when people leave.** When a browser's WebSocket closes, the server removes it from its room, and a room whose host leaves before anyone joins disappears from every lobby straight away. The Firebase version can't tell, so abandoned rooms stay listed.
+- **Nothing hosted, no keys.** It runs locally with `make dev`, or in Docker with one `docker compose` command.
+- **Every message is validated.** Pydantic models describe each message ([`schemas/`](signal-svc/app/endpoints/v1/signaling/schemas)). Anything that doesn't match gets an `error` back instead of reaching the room logic.
+- **The room logic is plain code.** `RoomRepository` returns a list of messages to send instead of touching sockets, so it's unit tested without a server. `SignalingHandler` only parses and delivers.
+
+**`/old`: Firestore, the first version.** Each room is a document in `rooms/` holding its name, the offer and the answer. `onSnapshot` tells the host when the answer arrives, and the lobby lists rooms whose answer is still empty. I kept it to show that the signaling layer can be swapped without touching the store or the UI.
 
 ### Connecting a room
 
@@ -58,53 +87,71 @@ sequenceDiagram
   autonumber
   actor Alice
   participant A as Alice's browser
-  participant FS as Firestore
+  participant S as signal-svc
   participant B as Bob's browser
   actor Bob
 
   Alice->>A: Create room "Standup"
-  A->>FS: Write room document with its name
+  A->>S: createRoom
+  S-->>A: roomCreated
   A->>A: Create offer, wait for ICE gathering
-  A->>FS: Write offer, answer = null
-  Note over FS: Listed in every lobby while answer is null
-  A->>FS: Listen for changes to the room
+  A->>S: offer
+  Note over S: Listed in every lobby until someone joins
   Bob->>B: Join "Standup"
-  B->>FS: Read the room
-  FS-->>B: Offer
+  B->>S: join
+  S-->>B: offer
   B->>B: Create answer, wait for ICE gathering
-  B->>FS: Write answer
-  FS-->>A: Room changed, answer arrived
+  B->>S: answer
+  S-->>A: answer
   A->>A: Apply answer
-  Note over A,B: Data channel opens. From here on Firestore is not involved.
+  Note over A,B: Data channel opens. From here on the server is not involved.
   A-)B: joined (Alice)
   B-)A: joined (Bob)
   Alice->>A: Send "hi"
   A-)B: sent (message)
 ```
 
-Both sides wait for ICE gathering to finish before writing, so each offer and answer already contains every network candidate. That keeps signaling to two writes per connection, with no separate candidate exchange.
+Both sides wait for ICE gathering to finish before sending, for at most 2 seconds, so each offer and answer already contains the network candidates. Without that cap, one slow reply from a STUN server could hold the offer back forever. That keeps signaling to one offer and one answer per connection, with no separate candidate exchange. The `/old` page follows the same steps, with Firestore reads and writes in place of the WebSocket messages.
 
 ### Leaving and rejoining
 
 ```mermaid
 sequenceDiagram
   participant A as Alice's browser
-  participant FS as Firestore
+  participant S as signal-svc
   participant B as Bob's browser
 
   B--xA: Bob reloads or closes the tab, the channel closes
+  B--xS: Bob's WebSocket closes too
+  Note over S: Bob is removed from the room
   A->>A: Record "Bob left", drop the old connection
   A->>A: Create a new connection and offer
-  A->>FS: Write offer to the same room, answer = null
-  Note over FS: Room is listed in the lobby again
-  B->>FS: Bob joins the room again and writes an answer
-  FS-->>A: Answer arrived
+  A->>S: offer for the same room
+  Note over S: Room is listed in the lobby again
+  B->>S: Bob joins the room again, then sends an answer
+  S-->>A: answer
   Note over A,B: New data channel opens
   B-)A: joined (Bob)
   A->>A: Bob left earlier, so record "Bob rejoined"
 ```
 
-Alice never has to reload. Whoever stays in the room re-opens it for the next person.
+Alice never has to reload. Whoever stays in the room re-opens it for the next person, and when the last person leaves, the server deletes the room.
+
+### Signaling protocol (`/`)
+
+JSON messages over one WebSocket to `ws://localhost:8080/api/v1/signaling/ws`. They are defined in [`requests.py`](signal-svc/app/endpoints/v1/signaling/schemas/requests.py) and [`responses.py`](signal-svc/app/endpoints/v1/signaling/schemas/responses.py).
+
+| Direction | Type | Fields | Meaning |
+|---|---|---|---|
+| client → server | `createRoom` | `name` | Register a new room. |
+| client → server | `offer` | `roomId`, `sdp` | Store an offer; the room is listed until someone joins. |
+| client → server | `join` | `roomId` | Ask for a waiting room's offer. |
+| client → server | `answer` | `roomId`, `sdp` | Answer the offer; relayed to the room's host. |
+| server → client | `rooms` | `rooms` | The rooms waiting for someone. Sent on connect and whenever the list changes. |
+| server → client | `roomCreated` | `room` | Reply to `createRoom`. |
+| server → client | `offer` | `roomId`, `sdp` | Reply to `join`. |
+| server → client | `answer` | `roomId`, `sdp` | The guest's answer, sent to the host. |
+| server → client | `error` | `message` | For example "Room is not available" when a second guest tries to join. |
 
 ## Project structure
 
@@ -128,15 +175,41 @@ client/src/
     events.ts          ChatEvent, RoomEvent
     message.ts         Message
     room.ts            Room
+    signaling.ts       Signaling interface both backends implement
   utils/
     formatTime.ts      "5 minutes ago" and 09:21 times
     linkify.tsx        turns URLs in a message into links
     participants.ts    who has been in the room, and who is active
   libs/
+    rtc.ts             peer connection, data channel, reconnect
     firebase.ts        Firestore setup
-    rtc.ts             peer connection, data channel, signaling
+    signaling/
+      index.ts         picks a backend from the URL path
+      server.ts        WebSocket client for signal-svc
+      firebase.ts      Firestore signaling (/old)
   test/                unit tests (Vitest)
-client/test/           end-to-end tests (Playwright)
+client/test/           end-to-end tests (Playwright), one file per area
+
+signal-svc/app/
+  main.py              FastAPI app, GET /health
+  endpoints/
+    base.py            /api router
+    v1/
+      base.py          /v1 router
+      signaling/
+        routers.py     WebSocket on /api/v1/signaling/ws
+        handlers/
+          signaling.py     tracks connections, validates and delivers messages
+        repositories/
+          rooms.py         room logic: create, offer, join, answer, disconnect
+        schemas/
+          requests.py      client → server messages
+          responses.py     server → client messages
+          common.py        RoomInfo, camelCase on the wire
+signal-svc/tests/      pytest: room logic, and the WebSocket through TestClient
+signal-svc/requirements/  prod.txt and dev.txt
+
+docker-compose.yml     runs signal-svc
 ```
 
 ## Message protocol

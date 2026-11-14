@@ -2,8 +2,9 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { useStore } from "../store/index.ts";
 import type { ChatEvent } from "../types/events.ts";
 import {
-  connect,
   createRoom,
+  hostRoom,
+  joinRoom,
   onClose,
   onMessage,
   onOpen,
@@ -11,8 +12,9 @@ import {
 } from "../libs/rtc.ts";
 
 vi.mock("../libs/rtc.ts", () => ({
-  connect: vi.fn(),
   createRoom: vi.fn(),
+  hostRoom: vi.fn(),
+  joinRoom: vi.fn(),
   onClose: vi.fn(),
   onMessage: vi.fn(),
   onOpen: vi.fn(),
@@ -70,32 +72,32 @@ beforeEach(() => {
   });
 });
 
-it("joins a room and connects to it", async () => {
+it("joins a room", async () => {
   useStore.setState({ name: null, room: null });
 
   await useStore.getState().join("Bob", standup);
 
-  expect(connect).toHaveBeenCalledWith("room-1");
+  expect(joinRoom).toHaveBeenCalledWith("room-1");
   expect(useStore.getState()).toMatchObject({ name: "Bob", room: standup });
 });
 
-it("logs an error when connecting fails", async () => {
-  vi.mocked(connect).mockRejectedValue(new Error("offline"));
+it("logs an error when joining fails", async () => {
+  vi.mocked(joinRoom).mockRejectedValue(new Error("Room is not available"));
 
   await useStore.getState().join("Bob", standup);
 
   expect(console.error).toHaveBeenCalled();
 });
 
-it("creates a room and joins it", async () => {
+it("creates a room and hosts it", async () => {
   useStore.setState({ name: null, room: null });
   vi.mocked(createRoom).mockResolvedValue(standup);
 
   await useStore.getState().create("Alice", "Standup");
 
   expect(createRoom).toHaveBeenCalledWith("Standup");
-  expect(connect).toHaveBeenCalledWith("room-1");
-  expect(useStore.getState().room).toEqual(standup);
+  expect(hostRoom).toHaveBeenCalledWith("room-1");
+  expect(useStore.getState()).toMatchObject({ name: "Alice", room: standup });
 });
 
 it("stays in the lobby when creating a room fails", async () => {
@@ -210,7 +212,9 @@ it("keeps your message unchanged when the edit could not be sent", () => {
   const [sent] = useStore.getState().events as ChatEvent[];
   vi.mocked(sendData).mockReturnValue(false);
 
-  expect(useStore.getState().edit(sent.payload.message.id, "hello")).toBe(false);
+  expect(useStore.getState().edit(sent.payload.message.id, "hello")).toBe(
+    false,
+  );
   expect(useStore.getState().events).toEqual([sent]);
 });
 

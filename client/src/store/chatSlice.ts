@@ -67,8 +67,7 @@ export const createChatSlice: StateCreator<
   return {
     userId,
     events: [],
-    addEvent: (event) =>
-      set((state) => ({ events: [...state.events, event] })),
+    addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
     updateMessage: (message) => {
       const original = findMessage(get().events, message.id);
       if (original?.userId !== message.userId) {
