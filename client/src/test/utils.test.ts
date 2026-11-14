@@ -44,11 +44,15 @@ it("recognises a message that is only an image link", () => {
 });
 
 it("lists everyone who has been in the room and who is active now", () => {
-  const participants = getParticipants("Alice", "Kiana", [
-    { type: "joined", userName: "Bob", createdAt: 1 },
-    { type: "left", userName: "Bob", createdAt: 2 },
-    { type: "joined", userName: "Kiana", createdAt: 3 },
-  ]);
+  const participants = getParticipants(
+    "Alice",
+    ["Kiana"],
+    [
+      { type: "joined", userName: "Bob", createdAt: 1 },
+      { type: "left", userName: "Bob", createdAt: 2 },
+      { type: "joined", userName: "Kiana", createdAt: 3 },
+    ],
+  );
 
   expect(participants).toEqual([
     { name: "Alice", active: true },

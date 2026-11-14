@@ -30,11 +30,14 @@ def listing(room_id: str, listed: bool) -> Callable[[Message], bool]:
     return match
 
 
-def create_waiting_room(host: WebSocketTestSession) -> str:
-    host.send_json({"type": "createRoom", "name": "Standup"})
-    room_id = next_matching(host, of_type("roomCreated"))["room"]["id"]
-    host.send_json({"type": "offer", "roomId": room_id, "sdp": {"sdp": "A"}})
-    return room_id
+def create_room(creator: WebSocketTestSession) -> str:
+    creator.send_json({"type": "createRoom", "name": "Standup"})
+    return next_matching(creator, of_type("roomCreated"))["room"]["id"]
+
+
+def join_room(socket: WebSocketTestSession, room_id: str) -> list[str]:
+    socket.send_json({"type": "join", "roomId": room_id})
+    return next_matching(socket, of_type("joined"))["peers"]
 
 
 def test_health_returns_ok(client: TestClient):
@@ -44,41 +47,60 @@ def test_health_returns_ok(client: TestClient):
     assert response.json() == {"status": "healthy"}
 
 
-def test_two_people_exchange_an_offer_and_an_answer(client: TestClient):
+def test_three_people_exchange_offers_and_answers(client: TestClient):
+    with (
+        client.websocket_connect(WS_URL) as alice,
+        client.websocket_connect(WS_URL) as bob,
+        client.websocket_connect(WS_URL) as carol,
+    ):
+        room_id = create_room(alice)
+        [alice_id] = join_room(bob, room_id)
+        peers = join_room(carol, room_id)
+        assert peers[0] == alice_id
+        assert len(peers) == 2
+
+        for peer_id in peers:
+            carol.send_json(
+                {
+                    "type": "offer",
+                    "roomId": room_id,
+                    "peerId": peer_id,
+                    "sdp": {"sdp": "A"},
+                }
+            )
+        to_alice = next_matching(alice, of_type("offer"))
+        to_bob = next_matching(bob, of_type("offer"))
+        assert to_alice["peerId"] == to_bob["peerId"]
+        assert to_alice["sdp"] == {"sdp": "A"}
+
+        bob.send_json(
+            {
+                "type": "answer",
+                "roomId": room_id,
+                "peerId": to_bob["peerId"],
+                "sdp": {"sdp": "B"},
+            }
+        )
+        answer = next_matching(carol, of_type("answer"))
+        assert answer["peerId"] == peers[1]
+        assert answer["sdp"] == {"sdp": "B"}
+
+
+def test_refuses_an_offer_to_someone_outside_the_room(client: TestClient):
     with client.websocket_connect(WS_URL) as alice:
-        room_id = create_waiting_room(alice)
+        room_id = create_room(alice)
+        alice.send_json(
+            {"type": "offer", "roomId": room_id, "peerId": "nobody", "sdp": {}}
+        )
+        error = next_matching(alice, of_type("error"))
 
-        with client.websocket_connect(WS_URL) as bob:
-            next_matching(bob, listing(room_id, True))
-            bob.send_json({"type": "join", "roomId": room_id})
-            offer = next_matching(bob, of_type("offer"))
-            assert offer["sdp"] == {"sdp": "A"}
-
-            bob.send_json({"type": "answer", "roomId": room_id, "sdp": {"sdp": "B"}})
-            answer = next_matching(alice, of_type("answer"))
-            assert answer["sdp"] == {"sdp": "B"}
+        assert error["message"] == "That person has left"
 
 
-def test_turns_away_a_second_guest(client: TestClient):
-    with client.websocket_connect(WS_URL) as alice:
-        room_id = create_waiting_room(alice)
-
-        with client.websocket_connect(WS_URL) as bob:
-            next_matching(bob, listing(room_id, True))
-            bob.send_json({"type": "join", "roomId": room_id})
-            next_matching(bob, of_type("offer"))
-
-            with client.websocket_connect(WS_URL) as carol:
-                carol.send_json({"type": "join", "roomId": room_id})
-                error = next_matching(carol, of_type("error"))
-
-                assert error["message"] == "Room is not available"
-
-
-def test_removes_a_waiting_room_when_its_host_leaves(client: TestClient):
+def test_removes_a_room_when_the_last_person_leaves(client: TestClient):
     with client.websocket_connect(WS_URL) as watcher:
         with client.websocket_connect(WS_URL) as alice:
-            room_id = create_waiting_room(alice)
+            room_id = create_room(alice)
             next_matching(watcher, listing(room_id, True))
 
         next_matching(watcher, listing(room_id, False))

@@ -1,4 +1,5 @@
 import {
+  chatOf,
   createRoom,
   enterLobby,
   expect,
@@ -26,7 +27,7 @@ test("Create turns blue once the room has a name, and asks for yours first", asy
   await expect(page.getByRole("heading", { name: "Chat rooms" })).toBeVisible();
 });
 
-test("a new room is listed in the lobby until someone joins it", async ({
+test("a room stays in the lobby while people are in it, so more can join", async ({
   newPerson,
 }) => {
   const roomName = uniqueRoomName();
@@ -39,10 +40,11 @@ test("a new room is listed in the lobby until someone joins it", async ({
   await expect(lobbyListing(carol, roomName)).toBeVisible();
 
   await joinRoom(bob, "Bob", roomName);
-  await expect(lobbyListing(carol, roomName)).toHaveCount(0);
+  await expect(chatOf(alice)).toContainText("Bob joined");
+  await expect(lobbyListing(carol, roomName)).toBeVisible();
 });
 
-test("a room disappears from the lobby when its host leaves", async ({
+test("a room disappears from the lobby when the last person leaves", async ({
   newPerson,
 }) => {
   const roomName = uniqueRoomName();

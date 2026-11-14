@@ -40,7 +40,7 @@ const lastReceivedId = (events: (ChatEvent | RoomEvent)[], userId: string) => {
 const ChatRoom = () => {
   const {
     name,
-    peer,
+    peers,
     events,
     userId,
     typing,
@@ -54,7 +54,7 @@ const ChatRoom = () => {
   } = useStore(
     useShallow((state) => ({
       name: state.name,
-      peer: state.peer,
+      peers: state.peers,
       events: state.events,
       userId: state.userId,
       typing: state.typing,
@@ -69,7 +69,8 @@ const ChatRoom = () => {
   );
   const [tab, setTab] = useState<Tab>("chat");
 
-  const participants = name ? getParticipants(name, peer, events) : [];
+  const connected = Object.values(peers);
+  const participants = name ? getParticipants(name, connected, events) : [];
   const latestId = lastReceivedId(events, userId);
 
   useEffect(() => {

@@ -1,16 +1,24 @@
 import type { Room } from "./room.ts";
 
+export type SignalHandler = (
+  peerId: string,
+  sdp: RTCSessionDescriptionInit,
+) => void;
+
 export type Signaling = {
   watchRooms: (onChange: (rooms: Room[]) => void) => () => void;
   createRoom: (name: string) => Promise<Room>;
-  publishOffer: (
+  joinRoom: (roomId: string) => Promise<string[]>;
+  sendOffer: (
     roomId: string,
+    peerId: string,
     offer: RTCSessionDescriptionInit,
-    onAnswer: (answer: RTCSessionDescriptionInit) => void,
-  ) => Promise<() => void>;
-  fetchOffer: (roomId: string) => Promise<RTCSessionDescriptionInit>;
-  publishAnswer: (
+  ) => Promise<void>;
+  sendAnswer: (
     roomId: string,
+    peerId: string,
     answer: RTCSessionDescriptionInit,
   ) => Promise<void>;
+  onOffer: (handler: SignalHandler) => void;
+  onAnswer: (handler: SignalHandler) => void;
 };

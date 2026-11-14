@@ -13,15 +13,23 @@ class RoomCreatedResponse(CamelModel):
     room: RoomInfo
 
 
+class JoinedResponse(CamelModel):
+    type: Literal["joined"] = "joined"
+    room_id: str
+    peers: list[str]
+
+
 class OfferResponse(CamelModel):
     type: Literal["offer"] = "offer"
     room_id: str
+    peer_id: str
     sdp: Any
 
 
 class AnswerResponse(CamelModel):
     type: Literal["answer"] = "answer"
     room_id: str
+    peer_id: str
     sdp: Any
 
 
@@ -31,5 +39,10 @@ class ErrorResponse(CamelModel):
 
 
 SignalResponse = (
-    RoomsResponse | RoomCreatedResponse | OfferResponse | AnswerResponse | ErrorResponse
+    RoomsResponse
+    | RoomCreatedResponse
+    | JoinedResponse
+    | OfferResponse
+    | AnswerResponse
+    | ErrorResponse
 )

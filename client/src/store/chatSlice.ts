@@ -49,6 +49,13 @@ const isMessage = (
   return event.payload.message.id === id;
 };
 
+const isOwnMessage = (event: ChatEvent | RoomEvent) => {
+  if (!("payload" in event)) {
+    return false;
+  }
+  return event.payload.message.userId === userId;
+};
+
 const findMessage = (events: (ChatEvent | RoomEvent)[], id: string) => {
   const event = events.find((event) => isMessage(event, id));
   return event?.payload.message;
@@ -67,6 +74,7 @@ export type ChatSlice = {
   remove: (id: string) => boolean;
   notifyTyping: () => void;
   markRead: (id: string) => void;
+  markSeen: (id: string) => void;
 };
 
 export const createChatSlice: StateCreator<
@@ -197,6 +205,23 @@ export const createChatSlice: StateCreator<
     markRead: (id) => {
       const event: ReadEvent = { type: "read", messageId: id };
       sendData(JSON.stringify(event));
+    },
+    markSeen: (id) => {
+      const { events, seenId } = get();
+      const readIndex = events.findIndex((event) => isMessage(event, id));
+      const ownIndex = events.findLastIndex(
+        (event, index) => index <= readIndex && isOwnMessage(event),
+      );
+      const seenIndex = events.findIndex(
+        (event) => seenId !== null && isMessage(event, seenId),
+      );
+      if (ownIndex <= seenIndex) {
+        return;
+      }
+      const own = events[ownIndex];
+      if ("payload" in own) {
+        set({ seenId: own.payload.message.id });
+      }
     },
   };
 };

@@ -40,7 +40,7 @@ test("leaving and coming back shows left, then rejoined", async ({
   await expect(chatOf(alice)).toContainText("back again");
 });
 
-test("when the host leaves, the person who stays re-opens the room", async ({
+test("when the creator leaves, the room stays open for whoever is left", async ({
   newPerson,
 }) => {
   const { alice, bob, roomName } = await startChat(newPerson);

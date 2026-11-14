@@ -29,7 +29,7 @@ class SignalingHandler:
         await socket.accept()
         conn = str(uuid4())
         self.sockets[conn] = socket
-        rooms = RoomsResponse(rooms=self.rooms.waiting())
+        rooms = RoomsResponse(rooms=self.rooms.listed())
         await self.deliver([Outgoing(conn, rooms)])
         return conn
 
@@ -49,12 +49,12 @@ class SignalingHandler:
         match request:
             case CreateRoomRequest(name=name):
                 return self.rooms.create(conn, name)
-            case OfferRequest(room_id=room_id, sdp=sdp):
-                return self.rooms.offer(conn, room_id, sdp)
             case JoinRequest(room_id=room_id):
                 return self.rooms.join(conn, room_id)
-            case AnswerRequest(room_id=room_id, sdp=sdp):
-                return self.rooms.answer(conn, room_id, sdp)
+            case OfferRequest(room_id=room_id, peer_id=peer_id, sdp=sdp):
+                return self.rooms.offer(conn, room_id, peer_id, sdp)
+            case AnswerRequest(room_id=room_id, peer_id=peer_id, sdp=sdp):
+                return self.rooms.answer(conn, room_id, peer_id, sdp)
 
     async def deliver(self, outgoing: list[Outgoing]) -> None:
         for item in outgoing:

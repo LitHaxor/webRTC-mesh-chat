@@ -13,6 +13,7 @@ class CreateRoomRequest(CamelModel):
 class OfferRequest(CamelModel):
     type: Literal["offer"]
     room_id: str
+    peer_id: str
     sdp: Any
 
 
@@ -24,6 +25,7 @@ class JoinRequest(CamelModel):
 class AnswerRequest(CamelModel):
     type: Literal["answer"]
     room_id: str
+    peer_id: str
     sdp: Any
 
 

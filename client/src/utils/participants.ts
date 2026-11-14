@@ -7,7 +7,7 @@ export type Participant = {
 
 export const getParticipants = (
   self: string,
-  peer: string | null,
+  connected: string[],
   events: (ChatEvent | RoomEvent)[],
 ): Participant[] => {
   const names = new Set([self]);
@@ -19,6 +19,6 @@ export const getParticipants = (
 
   return [...names].map((name) => ({
     name,
-    active: name === self || name === peer,
+    active: name === self || connected.includes(name),
   }));
 };

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { onClose, onMessage, onOpen, sendData } from "../libs/rtc.ts";
+import { onClose, onMessage, onOpen, sendTo } from "../libs/rtc.ts";
 import type {
   ChatEvent,
   ReadEvent,
@@ -28,24 +28,32 @@ const startTyping = (userName: string) => {
   typingTimer = setTimeout(stopTyping, TYPING_TIMEOUT_MS);
 };
 
-onOpen(() => {
+const stopTypingOf = (userName: string) => {
+  if (useStore.getState().typing === userName) {
+    stopTyping();
+  }
+};
+
+onOpen((peerId) => {
   const { name } = useStore.getState();
   if (name) {
-    sendData(JSON.stringify({ type: "joined", userName: name }));
+    sendTo(peerId, JSON.stringify({ type: "joined", userName: name }));
   }
 });
 
-onMessage((data) => {
+onMessage((peerId, data) => {
   const event: ChatEvent | RoomEvent | TypingEvent | ReadEvent =
     JSON.parse(data);
-  const { events, addEvent, updateMessage } = useStore.getState();
+  const { events, addEvent, updateMessage, markSeen } = useStore.getState();
 
   switch (event.type) {
     case "joined": {
       const hasLeft = events.some(
         (e) => e.type === "left" && e.userName === event.userName,
       );
-      useStore.setState({ peer: event.userName });
+      useStore.setState((state) => ({
+        peers: { ...state.peers, [peerId]: event.userName },
+      }));
       addEvent({
         type: hasLeft ? "rejoined" : "joined",
         userName: event.userName,
@@ -55,7 +63,7 @@ onMessage((data) => {
     }
     case "sent":
       addEvent(event);
-      stopTyping();
+      stopTypingOf(event.payload.message.userName);
       break;
     case "edited":
     case "deleted":
@@ -65,18 +73,20 @@ onMessage((data) => {
       startTyping(event.userName);
       break;
     case "read":
-      useStore.setState({ seenId: event.messageId });
+      markSeen(event.messageId);
       break;
     default:
       console.warn("Ignoring unexpected event:", event);
   }
 });
 
-onClose(() => {
-  const { peer, addEvent } = useStore.getState();
-  if (peer) {
-    addEvent({ type: "left", userName: peer, createdAt: Date.now() });
+onClose((peerId) => {
+  const { peers, addEvent } = useStore.getState();
+  const { [peerId]: userName, ...others } = peers;
+  if (!userName) {
+    return;
   }
-  stopTyping();
-  useStore.setState({ peer: null });
+  addEvent({ type: "left", userName, createdAt: Date.now() });
+  stopTypingOf(userName);
+  useStore.setState({ peers: others });
 });

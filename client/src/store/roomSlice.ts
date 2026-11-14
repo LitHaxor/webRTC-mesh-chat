@@ -1,13 +1,13 @@
 import type { StateCreator } from "zustand";
 import { chatDatabase } from "../libs/indexdb.ts";
-import { createRoom, hostRoom, joinRoom } from "../libs/rtc.ts";
+import { createRoom, joinRoom } from "../libs/rtc.ts";
 import type { ChatEvent } from "../types/events.ts";
 import type { Room } from "../types/room.ts";
 import type { ChatSlice } from "./chatSlice.ts";
 
 export type RoomSlice = {
   name: string | null;
-  peer: string | null;
+  peers: Record<string, string>;
   room: Room | null;
   join: (name: string, room: Room) => Promise<void>;
   create: (name: string, roomName: string) => Promise<void>;
@@ -34,7 +34,7 @@ export const createRoomSlice: StateCreator<
   RoomSlice
 > = (set) => ({
   name: null,
-  peer: null,
+  peers: {},
   room: null,
   join: async (name, room) => {
     const events = await loadHistory(room.id);
@@ -49,7 +49,6 @@ export const createRoomSlice: StateCreator<
     try {
       const room = await createRoom(roomName);
       set({ name, room });
-      await hostRoom(room.id);
     } catch (error) {
       console.error("Error creating the room:", error);
     }

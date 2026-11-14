@@ -1,11 +1,12 @@
 import type { Room } from "../../types/room.ts";
-import type { Signaling } from "../../types/signaling.ts";
+import type { SignalHandler, Signaling } from "../../types/signaling.ts";
 
 type ServerMessage =
   | { type: "rooms"; rooms: Room[] }
   | { type: "roomCreated"; room: Room }
-  | { type: "offer"; roomId: string; sdp: RTCSessionDescriptionInit }
-  | { type: "answer"; roomId: string; sdp: RTCSessionDescriptionInit }
+  | { type: "joined"; roomId: string; peers: string[] }
+  | { type: "offer"; peerId: string; sdp: RTCSessionDescriptionInit }
+  | { type: "answer"; peerId: string; sdp: RTCSessionDescriptionInit }
   | { type: "error"; message: string };
 
 type MessageOf<T extends ServerMessage["type"]> = Extract<
@@ -20,7 +21,8 @@ export const createServerSignaling = (url: string): Signaling => {
 
   let rooms: Room[] = [];
   let handleRooms: (rooms: Room[]) => void = () => {};
-  let handleAnswer: (answer: RTCSessionDescriptionInit) => void = () => {};
+  let handleOffer: SignalHandler = () => {};
+  let handleAnswer: SignalHandler = () => {};
 
   socket.addEventListener("message", (event) => {
     const message: ServerMessage = JSON.parse(event.data);
@@ -29,8 +31,11 @@ export const createServerSignaling = (url: string): Signaling => {
         rooms = message.rooms;
         handleRooms(rooms);
         break;
+      case "offer":
+        handleOffer(message.peerId, message.sdp);
+        break;
       case "answer":
-        handleAnswer(message.sdp);
+        handleAnswer(message.peerId, message.sdp);
         break;
       case "error":
         console.error("Signaling error:", message.message);
@@ -77,22 +82,24 @@ export const createServerSignaling = (url: string): Signaling => {
       return (await created).room;
     },
 
-    publishOffer: async (roomId, offer, onAnswer) => {
-      handleAnswer = onAnswer;
-      await send({ type: "offer", roomId, sdp: offer });
-      return () => {
-        handleAnswer = () => {};
-      };
-    },
-
-    fetchOffer: async (roomId) => {
-      const offer = waitFor("offer");
+    joinRoom: async (roomId) => {
+      const joined = waitFor("joined");
       await send({ type: "join", roomId });
-      return (await offer).sdp;
+      return (await joined).peers;
     },
 
-    publishAnswer: async (roomId, answer) => {
-      await send({ type: "answer", roomId, sdp: answer });
+    sendOffer: (roomId, peerId, offer) =>
+      send({ type: "offer", roomId, peerId, sdp: offer }),
+
+    sendAnswer: (roomId, peerId, answer) =>
+      send({ type: "answer", roomId, peerId, sdp: answer }),
+
+    onOffer: (handler) => {
+      handleOffer = handler;
+    },
+
+    onAnswer: (handler) => {
+      handleAnswer = handler;
     },
   };
 };
