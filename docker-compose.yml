@@ -5,3 +5,23 @@ services:
     build: ./signal-svc
     ports:
       - "8080:8080"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8080/health')
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_GIPHY_API_KEY: ${VITE_GIPHY_API_KEY:-}
+    ports:
+      - "3000:80"
+    depends_on:
+      signal-svc:
+        condition: service_healthy

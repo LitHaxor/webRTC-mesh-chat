@@ -4,21 +4,31 @@ Peer-to-peer chat built with React, TypeScript and WebRTC data channels.
 
 ## Getting started
 
+### One command, with Docker
+
+```bash
+make up               # builds and starts signal-svc on :8080 and the app on :3000
+make logs             # follows both
+make down             # stops and removes them
+```
+
+Open http://localhost:3000 in two tabs or on two devices. Enter a name, create a room in one, and join it from the other.
+
+GIF search needs a [Giphy API key](https://developers.giphy.com). Put `VITE_GIPHY_API_KEY=<key>` in `client/.env.local` and `make up` passes it to the app's build; without one, the GIF button is disabled.
+
+### Local development
+
 You need Node 24, Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
+make install          # signal-svc's .venv and the git pre-commit hook, then the client's node_modules
+
 cd signal-svc
-make install          # creates .venv, installs requirements/dev.txt and the git pre-commit hook
 make dev              # FastAPI signaling server on :8080
 
 cd client
-npm install
 npm run dev           # app on :5173
 ```
-
-Or run the signaling server in Docker instead: `docker compose up --build signal-svc`.
-
-Open http://localhost:5173 in two tabs or on two devices. Enter a name, create a room in one, and join it from the other.
 
 - **`/`** uses the FastAPI signaling server (`signal-svc`).
 - **`/old`** uses the earlier Firebase signaling and needs no local server.
@@ -26,6 +36,8 @@ Open http://localhost:5173 in two tabs or on two devices. Enter a name, create a
 Tests and linting:
 
 ```bash
+make test             # everything below: signal-svc's tests, the client's unit tests and the e2e suite
+
 cd client
 npm test              # unit tests (Vitest)
 npm run test:e2e      # end-to-end tests (Playwright); starts signal-svc and the app itself
@@ -39,6 +51,19 @@ make format           # ruff, writes the fixes
 ```
 
 Every commit runs [`.pre-commit-config.yaml`](.pre-commit-config.yaml): both `npm run lint` in `client/` and `make lint` in `signal-svc/`, whichever files changed, plus whitespace, YAML/TOML and private-key checks. If one fails, run that project's `format` and commit again. To run them by hand: `signal-svc/.venv/bin/pre-commit run --all-files`.
+
+### CI
+
+[`ci.yml`](.github/workflows/ci.yml) runs on every pull request and every push to `main`. It has these jobs:
+
+- the pre-commit hooks;
+- signal-svc's tests;
+- the client's unit tests;
+- the client build;
+- the Playwright e2e suite;
+- a `docker compose build`.
+
+Both test jobs print a coverage report to the log and add a coverage table to the run's summary page; on pull requests the client's table is also posted as a comment. A final `CI Checks` job fails if any job failed or was skipped, so it is the one check to require on `main`.
 
 ## Architecture
 
@@ -79,7 +104,7 @@ Two browsers need a shared place to swap a WebRTC offer and answer before they c
 
 - **It's what the brief expects:** a lightweight signaling server, about 300 lines of Python.
 - **It knows when people leave.** When a browser's WebSocket closes, the server removes it from its room, and a room whose host leaves before anyone joins disappears from every lobby straight away. The Firebase version can't tell, so abandoned rooms stay listed.
-- **Nothing hosted, no keys.** It runs locally with `make dev`, or in Docker with one `docker compose` command.
+- **Nothing hosted, no keys.** It runs locally with `make dev`, or in Docker with `make up`.
 - **Every message is validated.** Pydantic models describe each message ([`schemas/`](signal-svc/app/endpoints/v1/signaling/schemas)). Anything that doesn't match gets an `error` back instead of reaching the room logic.
 - **The room logic is plain code.** `RoomRepository` returns a list of messages to send instead of touching sockets, so it's unit tested without a server. `SignalingHandler` only parses and delivers.
 
@@ -214,7 +239,10 @@ signal-svc/app/
 signal-svc/tests/      pytest: room logic, and the WebSocket through TestClient
 signal-svc/requirements/  prod.txt and dev.txt
 
-docker-compose.yml     runs signal-svc
+client/Dockerfile      builds the app and serves it with nginx (client/nginx.conf)
+signal-svc/Dockerfile  runs signal-svc with uvicorn
+docker-compose.yml     both, for make up: the app waits until signal-svc is healthy
+Makefile               up, down, logs, install and test for the whole repo
 ```
 
 ## Message protocol

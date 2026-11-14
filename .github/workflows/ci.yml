@@ -1,0 +1,187 @@
+name: "CI"
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  pre-commit:
+    name: Pre-commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.13.0"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          make -C signal-svc install
+          npm ci --prefix client
+
+      - name: Run pre-commit hooks
+        run: signal-svc/.venv/bin/pre-commit run --all-files
+
+  signal-svc-tests:
+    name: signal-svc Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install Dependencies
+        run: make -C signal-svc install
+
+      - name: Tests with coverage
+        run: make -C signal-svc coverage
+
+      - name: Coverage summary
+        if: always()
+        working-directory: signal-svc
+        run: |
+          echo "### signal-svc coverage" >> "$GITHUB_STEP_SUMMARY"
+          .venv/bin/coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+  client-unit-tests:
+    name: Client Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.13.0"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci --prefix client
+
+      - name: Unit tests with coverage
+        working-directory: client
+        run: npm run test:coverage -- --coverage.reporter=text --coverage.reporter=json-summary --coverage.reporter=json
+
+      - name: Coverage summary
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          name: client
+          working-directory: client
+
+  client-build:
+    name: Client Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.13.0"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci --prefix client
+
+      - name: Build
+        run: npm run build --prefix client
+
+  e2e:
+    name: End-to-end Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.13.0"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          make -C signal-svc install
+          npm ci --prefix client
+
+      - name: Playwright tests
+        working-directory: client
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            client/playwright-report
+            client/test-results
+          retention-days: 7
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build
+
+  checks:
+    name: CI Checks
+    needs: [pre-commit, signal-svc-tests, client-unit-tests, client-build, e2e, docker]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Require every job to succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: |
+          echo '${{ toJSON(needs) }}'
+          exit 1

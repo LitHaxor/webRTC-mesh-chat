@@ -1,4 +1,4 @@
-.PHONY: install dev start test lint format
+.PHONY: install dev start test coverage lint format
 
 PORT ?= 8080
 
@@ -15,6 +15,9 @@ start:
 
 test:
 	.venv/bin/pytest
+
+coverage:
+	.venv/bin/pytest --cov=app --cov-report=term-missing
 
 lint:
 	.venv/bin/ruff check .
