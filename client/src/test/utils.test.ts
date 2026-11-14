@@ -10,7 +10,9 @@ it("formats a time as 24-hour hours and minutes", () => {
 it("shows how long ago something happened", () => {
   const now = Date.now();
 
-  expect(formatRelativeTime(now - 1_000, now)).toBe("1 second ago");
+  expect(formatRelativeTime(now - 1_000, now)).toBe("a few seconds ago");
+  expect(formatRelativeTime(now - 59_000, now)).toBe("a few seconds ago");
+  expect(formatRelativeTime(now - 60_000, now)).toBe("1 minute ago");
   expect(formatRelativeTime(now - 5 * 60_000, now)).toBe("5 minutes ago");
   expect(formatRelativeTime(now - 90 * 60_000, now)).toBe("1 hour ago");
   expect(formatRelativeTime(now - 86_400_000, now)).toBe("1 day ago");
@@ -19,7 +21,7 @@ it("shows how long ago something happened", () => {
 it("never shows a time in the future", () => {
   const now = Date.now();
 
-  expect(formatRelativeTime(now + 500, now)).toBe("0 seconds ago");
+  expect(formatRelativeTime(now + 500, now)).toBe("a few seconds ago");
 });
 
 it("turns links in a message into anchors", () => {

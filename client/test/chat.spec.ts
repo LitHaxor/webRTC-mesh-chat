@@ -27,7 +27,7 @@ test("each message shows who sent it and how long ago", async ({
   const row = messageRow(alice, "hello there");
 
   await expect(row).toContainText("Bob");
-  await expect(row).toContainText(/seconds? ago/);
+  await expect(row).toContainText("a few seconds ago");
   await expect(row.locator("time")).toHaveAttribute("title", /^\d{2}:\d{2}$/);
 });
 

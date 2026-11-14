@@ -37,3 +37,29 @@ test("only public keys and encrypted frames cross the data channel", async ({
   const types = new Set(frames.map((frame) => JSON.parse(frame).type));
   expect(types).toEqual(new Set(["key", "encrypted"]));
 });
+
+test("a message too large to encrypt keeps its clock and never arrives", async ({
+  newPerson,
+}) => {
+  const alice = await newPerson();
+  const bob = await newPerson();
+  const roomName = uniqueRoomName();
+  await createRoom(alice, "Alice", roomName);
+  await joinRoom(bob, "Bob", roomName);
+  await expect(chatOf(alice)).toContainText("Bob joined");
+
+  await sendMessage(alice, `too-big ${"x".repeat(150_000)}`);
+  await expect(
+    messageRow(alice, "too-big").getByLabel("Sending"),
+  ).toBeVisible();
+
+  await sendMessage(alice, "small one after");
+  await expect(messageRow(bob, "small one after")).toBeVisible();
+  await expect(chatOf(bob)).not.toContainText("too-big");
+  await expect(
+    messageRow(alice, "too-big").getByLabel("Sending"),
+  ).toBeVisible();
+  await expect(
+    messageRow(alice, "small one after").getByLabel("Sending"),
+  ).toHaveCount(0);
+});
