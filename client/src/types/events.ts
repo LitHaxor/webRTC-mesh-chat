@@ -18,4 +18,5 @@ export interface ChatEvent<T = object> {
 export interface RoomEvent {
   type: RoomEventType;
   userName: string;
+  createdAt: number;
 }

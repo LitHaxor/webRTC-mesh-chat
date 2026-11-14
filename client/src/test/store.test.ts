@@ -152,8 +152,8 @@ it("tracks when someone joins, leaves and rejoins", () => {
   receive(JSON.stringify({ type: "joined", userName: "Bob" }));
 
   expect(useStore.getState().events).toEqual([
-    { type: "joined", userName: "Bob" },
-    { type: "left", userName: "Bob" },
-    { type: "rejoined", userName: "Bob" },
+    { type: "joined", userName: "Bob", createdAt: expect.any(Number) },
+    { type: "left", userName: "Bob", createdAt: expect.any(Number) },
+    { type: "rejoined", userName: "Bob", createdAt: expect.any(Number) },
   ]);
 });

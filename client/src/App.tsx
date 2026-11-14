@@ -1,15 +1,22 @@
 import { X } from "lucide-react";
+import { useState } from "react";
 import { useStore } from "./store/index.ts";
 import Lobby from "./components/Lobby.tsx";
 import MessageForm from "./components/MessageForm.tsx";
 import MessageList from "./components/MessageList.tsx";
+import ParticipantList from "./components/ParticipantList.tsx";
 
 const App = () => {
+  const name = useStore((state) => state.name);
+  const peer = useStore((state) => state.peer);
   const room = useStore((state) => state.room);
   const events = useStore((state) => state.events);
   const join = useStore((state) => state.join);
   const create = useStore((state) => state.create);
   const send = useStore((state) => state.send);
+  const [tab, setTab] = useState<"participants" | "chat">("chat");
+
+  const participants = [name, peer].filter((person) => person !== null);
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
@@ -32,8 +39,30 @@ const App = () => {
 
         {room ? (
           <>
-            <MessageList events={events} />
-            <MessageForm onSend={send} />
+            <div className="mx-3 mt-3 flex rounded-md bg-neutral-200 p-1">
+              <button
+                type="button"
+                onClick={() => setTab("participants")}
+                className={`flex-1 rounded py-2 font-semibold ${tab === "participants" ? "bg-white text-blue-600 shadow-sm" : ""}`}
+              >
+                Participants ({participants.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("chat")}
+                className={`flex-1 rounded py-2 font-semibold ${tab === "chat" ? "bg-white text-blue-600 shadow-sm" : ""}`}
+              >
+                Chat
+              </button>
+            </div>
+
+            {tab === "participants" && (
+              <ParticipantList participants={participants} />
+            )}
+            <div hidden={tab !== "chat"} className="flex min-h-0 flex-1 flex-col">
+              <MessageList events={events} />
+              <MessageForm onSend={send} />
+            </div>
           </>
         ) : (
           <Lobby onJoin={join} onCreate={create} />

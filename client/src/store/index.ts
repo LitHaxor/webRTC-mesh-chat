@@ -29,6 +29,7 @@ onMessage((data) => {
       addEvent({
         type: hasLeft ? "rejoined" : "joined",
         userName: event.userName,
+        createdAt: Date.now(),
       });
       break;
     }
@@ -45,7 +46,7 @@ onMessage((data) => {
 onClose(() => {
   const { peer, addEvent } = useStore.getState();
   if (peer) {
-    addEvent({ type: "left", userName: peer });
+    addEvent({ type: "left", userName: peer, createdAt: Date.now() });
   }
   useStore.setState({ peer: null });
 });
