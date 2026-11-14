@@ -14,6 +14,7 @@ export default defineConfig({
       command: "npm run dev -- --port 5175 --strictPort",
       url: "http://localhost:5175",
       reuseExistingServer: true,
+      env: { VITE_GIPHY_API_KEY: "e2e" },
     },
   ],
 });

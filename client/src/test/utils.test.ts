@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { formatRelativeTime, formatTime } from "../utils/formatTime.ts";
-import { linkify } from "../utils/linkify.tsx";
+import { findUrl, isImageUrl, linkify } from "../utils/linkify.tsx";
 import { getParticipants } from "../utils/participants.ts";
 
 it("formats a time as 24-hour hours and minutes", () => {
@@ -28,6 +28,19 @@ it("turns links in a message into anchors", () => {
   expect(before).toBe("see ");
   expect(link).toMatchObject({ props: { href: "https://example.com/doc" } });
   expect(after).toBe(" please");
+});
+
+it("finds the first link in a message", () => {
+  expect(findUrl("see https://a.com and https://b.com")).toBe("https://a.com");
+  expect(findUrl("no links here")).toBeUndefined();
+});
+
+it("recognises a message that is only an image link", () => {
+  expect(
+    isImageUrl("https://media.giphy.com/media/abc/200.gif?cid=1&ct=g"),
+  ).toBe(true);
+  expect(isImageUrl("look https://example.com/cat.png")).toBe(false);
+  expect(isImageUrl("https://example.com/doc")).toBe(false);
 });
 
 it("lists everyone who has been in the room and who is active now", () => {

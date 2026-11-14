@@ -1,5 +1,10 @@
+import EmojiPicker from "emoji-picker-react";
 import { Plus, SendHorizontal, Smile } from "lucide-react";
 import { useState } from "react";
+import { hasGiphy } from "../libs/giphy.ts";
+import GifPicker from "./GifPicker.tsx";
+
+type Picker = "emoji" | "gif" | null;
 
 type Props = {
   onSend: (text: string) => boolean;
@@ -8,6 +13,9 @@ type Props = {
 
 const MessageForm = ({ onSend, onTyping }: Props) => {
   const [draft, setDraft] = useState("");
+  const [picker, setPicker] = useState<Picker>(null);
+
+  const toggle = (next: Picker) => setPicker(picker === next ? null : next);
 
   return (
     <form
@@ -15,8 +23,28 @@ const MessageForm = ({ onSend, onTyping }: Props) => {
         event.preventDefault();
         if (draft.trim() && onSend(draft)) setDraft("");
       }}
-      className="m-3 flex flex-col gap-4 rounded border border-neutral-300 p-3 focus-within:border-blue-600"
+      className="relative m-3 flex flex-col gap-4 rounded border border-neutral-300 p-3 focus-within:border-blue-600"
     >
+      {picker === "emoji" && (
+        <div className="absolute bottom-full left-0 mb-2">
+          <EmojiPicker
+            width={320}
+            height={380}
+            onEmojiClick={({ emoji }) => {
+              setDraft((draft) => draft + emoji);
+              setPicker(null);
+            }}
+          />
+        </div>
+      )}
+      {picker === "gif" && (
+        <GifPicker
+          onPick={(url) => {
+            onSend(url);
+            setPicker(null);
+          }}
+        />
+      )}
       <input
         value={draft}
         onChange={(event) => {
@@ -30,8 +58,25 @@ const MessageForm = ({ onSend, onTyping }: Props) => {
         <button type="button" disabled aria-label="Attach file">
           <Plus className="size-6" />
         </button>
-        <button type="button" disabled aria-label="Add emoji">
+        <button
+          type="button"
+          aria-label="Add emoji"
+          aria-expanded={picker === "emoji"}
+          onClick={() => toggle("emoji")}
+          className="hover:text-neutral-900"
+        >
           <Smile className="size-6" />
+        </button>
+        <button
+          type="button"
+          aria-label="Add GIF"
+          aria-expanded={picker === "gif"}
+          disabled={!hasGiphy}
+          title={hasGiphy ? undefined : "Set VITE_GIPHY_API_KEY to search GIFs"}
+          onClick={() => toggle("gif")}
+          className="rounded border-2 border-current px-1 text-xs font-bold hover:text-neutral-900 disabled:opacity-40"
+        >
+          GIF
         </button>
         <button
           type="submit"

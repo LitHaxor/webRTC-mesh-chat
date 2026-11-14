@@ -2,7 +2,22 @@ import { CheckCheck, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Message } from "../types/message.ts";
 import { formatRelativeTime, formatTime } from "../utils/formatTime.ts";
-import { linkify } from "../utils/linkify.tsx";
+import { findUrl, isImageUrl, linkify } from "../utils/linkify.tsx";
+import LinkPreview from "./LinkPreview.tsx";
+
+const MessageBody = ({ text }: { text: string }) => {
+  if (isImageUrl(text)) {
+    return <img src={text} alt="GIF" className="mt-1 max-h-48 rounded" />;
+  }
+
+  const url = findUrl(text);
+  return (
+    <>
+      <p className="wrap-break-word whitespace-pre-wrap">{linkify(text)}</p>
+      {url && <LinkPreview url={url} />}
+    </>
+  );
+};
 
 type Props = {
   message: Message;
@@ -94,11 +109,7 @@ const MessageItem = ({
         />
       )}
       {isDeleted && <p className="italic text-neutral-500">Message deleted</p>}
-      {!isDeleted && !isEditing && (
-        <p className="wrap-break-word whitespace-pre-wrap">
-          {linkify(message.text)}
-        </p>
-      )}
+      {!isDeleted && !isEditing && <MessageBody text={message.text} />}
     </li>
   );
 };

@@ -14,3 +14,8 @@ export const linkify = (text: string) =>
       part
     ),
   );
+
+export const findUrl = (text: string) => text.match(/https?:\/\/\S+/)?.[0];
+
+export const isImageUrl = (text: string) =>
+  /^https?:\/\/\S+\.(gif|jpe?g|png|webp)(\?\S*)?$/i.test(text);
