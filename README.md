@@ -22,9 +22,11 @@ Signaling uses one Firestore document per room in `rooms/`. The person who creat
 
 ```
 client/src/
-  App.tsx              layout
+  App.tsx              page frame: lobby or room
   components/
+    Header.tsx         title and leave button
     Lobby.tsx          name, room list, create room
+    ChatRoom.tsx       tabs, participants, messages, composer
     MessageList.tsx    messages and join/leave rows
     MessageItem.tsx    one message, with editing for your own
     MessageForm.tsx    message input
@@ -33,7 +35,7 @@ client/src/
   store/
     index.ts           store, connects rtc events to it
     roomSlice.ts       name, room, peer, join, create
-    chatSlice.ts       events, send, edit
+    chatSlice.ts       events, send, edit, remove
   types/
     events.ts          ChatEvent, RoomEvent
     message.ts         Message
@@ -59,7 +61,7 @@ Peers exchange events as JSON strings over one WebRTC data channel, one event pe
 |---|---|---|---|
 | `sent` | chat | yes | A new message. |
 | `edited` | chat | yes | An existing message's text changed. See below. |
-| `deleted` | chat | not yet | An existing message was removed. Reserved; see below. |
+| `deleted` | chat | yes | An existing message was removed. See below. |
 | `joined` | room | yes | Sent by each side when the data channel opens. |
 | `left` | room | no | Added locally when the data channel closes. |
 | `rejoined` | room | no | Added locally instead of `joined` when that person has left before. |
@@ -90,7 +92,7 @@ The receiver ignores any other type, and any `left` or `rejoined` that arrives o
 - `message.id` is a random UUID created by the sender. It identifies the message for both people.
 - `message.userId` is a random UUID per browser tab, so two people with the same name stay distinct.
 - `message.createdAt` is the sender's clock, in milliseconds since 1970.
-- `message.editedAt` is only present once a message has been edited.
+- `message.editedAt` is only present once a message has been edited, and `message.deletedAt` once it has been deleted.
 - `metadata` is a generic slot (`ChatEvent<T>`) for extra data per event. It is empty today.
 
 ### Room events
@@ -108,5 +110,5 @@ Each side stores room events with a local `createdAt`, so they show a time in th
 Both reuse the chat event shape and point at the original message by `payload.message.id`.
 
 - **`edited`:** carries the whole message with the new `text` and an `editedAt` time; `createdAt` keeps the original time. The receiver replaces the message with that `id`, and both people see "(edited)" next to it.
-- **`deleted` (planned):** will carry the same `payload.message.id`. The receiver will keep the entry but show it as "message deleted", so the other person can see that something was removed.
+- **`deleted`:** carries the message with `text` emptied and a `deletedAt` time. The receiver keeps the entry and shows "Message deleted" in its place, so both people can see that something was removed. A deleted message can't be edited again.
 - **Ownership:** a receiver ignores an edit or delete whose `payload.message.userId` does not match the original message's `userId`, so people can only change their own messages.

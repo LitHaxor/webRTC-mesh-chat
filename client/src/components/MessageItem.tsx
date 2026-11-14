@@ -1,4 +1,4 @@
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Message } from "../types/message.ts";
 import { formatRelativeTime, formatTime } from "../utils/formatTime.ts";
@@ -9,11 +9,15 @@ type Props = {
   isOwn: boolean;
   now: number;
   onEdit: (id: string, text: string) => boolean;
+  onDelete: (id: string) => boolean;
 };
 
-const MessageItem = ({ message, isOwn, now, onEdit }: Props) => {
+const MessageItem = ({ message, isOwn, now, onEdit, onDelete }: Props) => {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(message.text);
+
+  const isDeleted = message.deletedAt !== undefined;
+  const canChange = isOwn && !isDeleted && !isEditing;
 
   const startEditing = () => {
     setDraft(message.text);
@@ -36,7 +40,7 @@ const MessageItem = ({ message, isOwn, now, onEdit }: Props) => {
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-semibold">{message.userName}</p>
         <div className="flex items-center gap-2 text-sm text-neutral-600">
-          {isOwn && !isEditing && (
+          {canChange && (
             <button
               type="button"
               aria-label="Edit message"
@@ -46,7 +50,17 @@ const MessageItem = ({ message, isOwn, now, onEdit }: Props) => {
               <Pencil className="size-4" />
             </button>
           )}
-          {message.editedAt !== undefined && <span>(edited)</span>}
+          {canChange && (
+            <button
+              type="button"
+              aria-label="Delete message"
+              onClick={() => onDelete(message.id)}
+              className="opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          )}
+          {message.editedAt !== undefined && !isDeleted && <span>(edited)</span>}
           <time title={formatTime(message.createdAt)}>
             {formatRelativeTime(message.createdAt, now)}
           </time>
@@ -66,7 +80,8 @@ const MessageItem = ({ message, isOwn, now, onEdit }: Props) => {
           className="mt-1 w-full rounded border border-blue-600 px-2 py-1 outline-none"
         />
       )}
-      {!isEditing && (
+      {isDeleted && <p className="italic text-neutral-500">Message deleted</p>}
+      {!isDeleted && !isEditing && (
         <p className="wrap-break-word whitespace-pre-wrap">
           {linkify(message.text)}
         </p>

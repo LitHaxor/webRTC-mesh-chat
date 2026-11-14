@@ -8,9 +8,10 @@ type Props = {
   events: (ChatEvent | RoomEvent)[];
   userId: string;
   onEdit: (id: string, text: string) => boolean;
+  onDelete: (id: string) => boolean;
 };
 
-const MessageList = ({ events, userId, onEdit }: Props) => {
+const MessageList = ({ events, userId, onEdit, onDelete }: Props) => {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -30,6 +31,7 @@ const MessageList = ({ events, userId, onEdit }: Props) => {
               isOwn={message.userId === userId}
               now={now}
               onEdit={onEdit}
+              onDelete={onDelete}
             />
           );
         }

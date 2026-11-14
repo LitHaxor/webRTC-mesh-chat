@@ -49,6 +49,15 @@ const editedByBob = (changes: object) => ({
   },
 });
 
+const deletedByBob = {
+  type: "deleted",
+  sessionId: "room-1",
+  payload: {
+    message: { ...sentByBob.payload.message, text: "", deletedAt: 3 },
+    metadata: {},
+  },
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -223,4 +232,54 @@ it("ignores an edit that claims a different author", () => {
   receive(JSON.stringify(editedByBob({ userId: "mallory", text: "hacked" })));
 
   expect(useStore.getState().events).toEqual([sentByBob]);
+});
+
+it("deletes your own message and tells the other person", () => {
+  vi.mocked(sendData).mockReturnValue(true);
+  useStore.getState().send("hi");
+  const [sent] = useStore.getState().events as ChatEvent[];
+
+  expect(useStore.getState().remove(sent.payload.message.id)).toBe(true);
+
+  const [deleted] = useStore.getState().events as ChatEvent[];
+  expect(deleted.payload.message).toMatchObject({
+    text: "",
+    deletedAt: expect.any(Number),
+  });
+  expect(sendData).toHaveBeenLastCalledWith(
+    expect.stringContaining('"type":"deleted"'),
+  );
+});
+
+it("cannot delete someone else's message", () => {
+  receive(JSON.stringify(sentByBob));
+
+  expect(useStore.getState().remove("m1")).toBe(false);
+  expect(useStore.getState().events).toEqual([sentByBob]);
+});
+
+it("applies a delete from the other person", () => {
+  receive(JSON.stringify(sentByBob));
+  receive(JSON.stringify(deletedByBob));
+
+  const [event] = useStore.getState().events as ChatEvent[];
+  expect(event.payload.message).toMatchObject({ text: "", deletedAt: 3 });
+});
+
+it("cannot edit a deleted message", () => {
+  vi.mocked(sendData).mockReturnValue(true);
+  useStore.getState().send("hi");
+  const [sent] = useStore.getState().events as ChatEvent[];
+  useStore.getState().remove(sent.payload.message.id);
+
+  expect(useStore.getState().edit(sent.payload.message.id, "back")).toBe(false);
+});
+
+it("ignores an edit to a message the other person deleted", () => {
+  receive(JSON.stringify(sentByBob));
+  receive(JSON.stringify(deletedByBob));
+  receive(JSON.stringify(editedByBob({ text: "back again" })));
+
+  const [event] = useStore.getState().events as ChatEvent[];
+  expect(event.payload.message.text).toBe("");
 });

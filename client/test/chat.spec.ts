@@ -47,6 +47,12 @@ test("two people chat in a room one of them created", async ({ browser }) => {
     bobsCopy.getByRole("button", { name: "Edit message" }),
   ).toHaveCount(0);
 
+  const bobMessage = bob.getByRole("listitem").filter({ hasText: "hi alice" });
+  await bobMessage.hover();
+  await bobMessage.getByRole("button", { name: "Delete message" }).click();
+  await expect(alice.getByRole("list")).toContainText("Message deleted");
+  await expect(alice.getByRole("list")).not.toContainText("hi alice");
+
   await enterName(bob, "Bob");
   await expect(alice.getByRole("list")).toContainText("Bob left");
   await joinRoom(bob, roomName);

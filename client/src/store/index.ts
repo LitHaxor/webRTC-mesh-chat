@@ -37,6 +37,7 @@ onMessage((data) => {
       addEvent(event);
       break;
     case "edited":
+    case "deleted":
       updateMessage(event.payload.message);
       break;
     default:
