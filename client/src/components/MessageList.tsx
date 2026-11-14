@@ -99,12 +99,7 @@ const MessageList = ({ events, userId, seenId, onEdit, onDelete }: Props) => {
         })}
         {!hasMessages && (
           <li className="m-auto flex flex-col items-center gap-2 text-center text-neutral-500">
-            <Hairline
-              mount={mountTable}
-              stops={tableTour}
-              value={14}
-              label="A round table with every seat empty"
-            />
+            <Hairline mount={mountTable} stops={tableTour} value={14} />
             <p className="font-semibold text-neutral-600">No messages yet</p>
             <p className="text-sm">Say hello to start the conversation.</p>
           </li>

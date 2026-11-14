@@ -1,5 +1,5 @@
 import { CheckCheck, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Message } from "../types/message.ts";
 import { formatRelativeTime, formatTime } from "../utils/formatTime.ts";
 import { findUrl, isImageUrl, linkify } from "../utils/linkify.tsx";
@@ -38,6 +38,13 @@ const MessageItem = ({
 }: Props) => {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(message.text);
+  const editRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing) {
+      editRef.current?.focus();
+    }
+  }, [isEditing]);
 
   const isDeleted = message.deletedAt !== undefined;
   const canChange = isOwn && !isDeleted && !isEditing;
@@ -97,7 +104,7 @@ const MessageItem = ({
 
       {isEditing && (
         <input
-          autoFocus
+          ref={editRef}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {

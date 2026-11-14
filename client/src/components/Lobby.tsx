@@ -55,12 +55,7 @@ const Lobby = ({ onJoin, onCreate }: Props) => {
       <ul className="min-h-0 flex-1 divide-y divide-neutral-200 overflow-y-auto border-y border-neutral-200">
         {rooms.length === 0 && (
           <li className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-neutral-500">
-            <Hairline
-              mount={mountCorridor}
-              stops={corridorTour}
-              value={75}
-              label="Five closed doors along a corridor"
-            />
+            <Hairline mount={mountCorridor} stops={corridorTour} value={75} />
             <p className="font-semibold text-neutral-600">No active rooms</p>
             <p className="text-sm">Create one below to start chatting.</p>
           </li>

@@ -23,7 +23,7 @@ const LinkPreview = ({ url }: Props) => {
       }
     };
 
-    load();
+    void load();
     return () => {
       isCurrent = false;
     };

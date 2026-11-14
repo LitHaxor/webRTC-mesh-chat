@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchGifs } from "../libs/giphy.ts";
 import type { Gif } from "../types/gif.ts";
 
@@ -9,6 +9,11 @@ type Props = {
 const GifPicker = ({ onPick }: Props) => {
   const [query, setQuery] = useState("");
   const [gifs, setGifs] = useState<Gif[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const search = async () => {
     try {
@@ -21,13 +26,13 @@ const GifPicker = ({ onPick }: Props) => {
   return (
     <div className="absolute bottom-full left-0 mb-2 w-80 rounded border border-neutral-300 bg-white p-2 shadow">
       <input
-        autoFocus
+        ref={inputRef}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
           if (event.key !== "Enter") return;
           event.preventDefault();
-          search();
+          void search();
         }}
         placeholder="Search GIFs"
         className="w-full rounded border border-neutral-300 px-2 py-1 text-sm outline-none focus:border-blue-600"

@@ -6,10 +6,9 @@ type Props = {
   mount: FigureMount;
   stops: Tour;
   value: number;
-  label: string;
 };
 
-const Hairline = ({ mount, stops, value, label }: Props) => {
+const Hairline = ({ mount, stops, value }: Props) => {
   const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,13 +32,7 @@ const Hairline = ({ mount, stops, value, label }: Props) => {
   }, [mount, stops, value]);
 
   return (
-    <div
-      ref={stageRef}
-      role="img"
-      aria-label={label}
-      data-hairline=""
-      className="w-48"
-    />
+    <div ref={stageRef} aria-hidden="true" data-hairline="" className="w-48" />
   );
 };
 
