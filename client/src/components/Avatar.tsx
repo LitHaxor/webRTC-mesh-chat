@@ -14,7 +14,7 @@ const HUES = [10, 30, 200, 220, 345];
 const getHue = (name: string) => {
   let hash = 0;
   for (const char of name) {
-    hash += char.charCodeAt(0);
+    hash += char.codePointAt(0) ?? 0;
   }
   return HUES[hash % HUES.length];
 };

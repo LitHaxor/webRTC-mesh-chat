@@ -238,12 +238,12 @@ flowchart TD
 
 The client has four layers. Each one talks to the layer below it and knows nothing further down.
 
-| Layer                                                                | Knows about                                                                         | Does not know about         |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------- |
-| Components (`components/`)                                           | What to draw, what the user did                                                     | WebRTC, encryption, storage |
-| Store (`store/`)                                                     | Chat rules: who may edit what, what "rejoined" means, when a message counts as sent | How bytes travel            |
-| Transport (`libs/rtc.ts`, `libs/secureChannel.ts`, `libs/crypto.ts`) | Peer connections, key exchange, encrypted frames, reconnecting                      | What a message means        |
-| Signaling (`libs/signaling/`)                                        | How to swap an offer and an answer                                                  | The other three layers      |
+| Layer                                                              | Knows about                                                                         | Does not know about         |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------- | --------------------------- |
+| Components (`components/`)                                         | What to draw, what the user did                                                     | WebRTC, encryption, storage |
+| Store (`store/`)                                                   | Chat rules: who may edit what, what "rejoined" means, when a message counts as sent | How bytes travel            |
+| Transport (`libs/rtc/`, `libs/secureChannel.ts`, `libs/crypto.ts`) | Peer connections, key exchange, encrypted frames, reconnecting                      | What a message means        |
+| Signaling (`libs/signaling/`)                                      | How to swap an offer and an answer                                                  | The other three layers      |
 
 The store's 42 tests run in plain Node against a fake transport. The signaling layer is one small interface with two implementations, so `/old` runs on Firebase without an `if` anywhere else in the app.
 
@@ -276,7 +276,7 @@ sequenceDiagram
 
 | What Firebase gives                                              | What it costs                                                                                                                      |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| No server to write, run or deploy                                | The project depends on our Firebase account staying alive. Nobody else can run the whole system on their own machine                |
+| No server to write, run or deploy                                | The project depends on our Firebase account staying alive. Nobody else can run the whole system on their own machine               |
 | A live lobby for free: Firestore pushes changes to every browser | Firestore knows what a browser has written. It cannot tell that a browser has gone away                                            |
 | Works across machines out of the box                             | Each offer and answer, which include network addresses, sits at a third party until someone deletes it                             |
 | Zero configuration to start                                      | The project's configuration is in the client bundle, and what is allowed depends on rules set in a console, outside the repository |
@@ -1330,4 +1330,3 @@ With more time we would work in this order:
 5. Lift the message size limit: fix the base64 step, then split large messages into pieces. The same splitting gives file sharing.
 6. Add a safety number, so two people can check nobody is in the middle.
 7. Harden the service: a room size limit, reconnect from the client, limits on what the preview endpoint may fetch, rate limits, TLS and a relay server.
-

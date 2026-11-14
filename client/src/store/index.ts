@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { onClose, onMessage, onOpen, sendTo } from "../libs/rtc.ts";
+import { onClose, onMessage, onOpen, sendTo } from "../libs/rtc/index.ts";
 import type {
   ChatEvent,
   ReadEvent,

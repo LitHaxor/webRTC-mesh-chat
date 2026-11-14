@@ -10,13 +10,13 @@ import {
   onOpen,
   sendData,
   sendTo,
-} from "../libs/rtc.ts";
+} from "../libs/rtc/index.ts";
 
 vi.mock("../libs/indexdb.ts", () => ({
   chatDatabase: { save: vi.fn(), load: vi.fn() },
 }));
 
-vi.mock("../libs/rtc.ts", () => ({
+vi.mock("../libs/rtc/index.ts", () => ({
   createRoom: vi.fn(),
   joinRoom: vi.fn(),
   onClose: vi.fn(),

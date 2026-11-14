@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 import { chatDatabase } from "../libs/indexdb.ts";
-import { sendData } from "../libs/rtc.ts";
+import { sendData } from "../libs/rtc/index.ts";
 import type {
   ChatEvent,
   ReadEvent,
@@ -189,7 +189,7 @@ export const createChatSlice: StateCreator<
       changeOwnMessage("edited", id, { text, editedAt: Date.now() }),
     remove: (id) =>
       changeOwnMessage("deleted", id, { text: "", deletedAt: Date.now() }),
-    notifyTyping: () => {
+    notifyTyping: async () => {
       const { name } = get();
       if (!name) {
         return;
@@ -200,11 +200,19 @@ export const createChatSlice: StateCreator<
       }
       lastTypingAt = now;
       const event: TypingEvent = { type: "typing", userName: name };
-      sendData(JSON.stringify(event));
+      await sendData(JSON.stringify(event));
     },
-    markRead: (id) => {
+    markRead: async (id) => {
       const event: ReadEvent = { type: "read", messageId: id };
-      sendData(JSON.stringify(event));
+      try {
+        await sendData(JSON.stringify(event));
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error("Error sending read event:", error.message);
+        } else {
+          console.error("Error sending read event:", error);
+        }
+      }
     },
     markSeen: (id) => {
       const { events, seenId } = get();

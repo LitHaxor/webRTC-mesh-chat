@@ -1,6 +1,6 @@
 import type { StateCreator } from "zustand";
 import { chatDatabase } from "../libs/indexdb.ts";
-import { createRoom, joinRoom } from "../libs/rtc.ts";
+import { createRoom, joinRoom } from "../libs/rtc/index.ts";
 import type { ChatEvent } from "../types/events.ts";
 import type { Room } from "../types/room.ts";
 import type { ChatSlice } from "./chatSlice.ts";

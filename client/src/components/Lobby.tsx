@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Room } from "../types/room.ts";
-import { watchRooms } from "../libs/rtc.ts";
+import { watchRooms } from "../libs/rtc/index.ts";
 import { corridorTour, mountCorridor } from "../anims/corridor.ts";
 import Hairline from "../anims/Hairline.tsx";
 
