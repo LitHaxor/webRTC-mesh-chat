@@ -61,14 +61,14 @@ const MessageItem = ({
   return (
     <li className="group">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="font-semibold">{message.userName}</p>
-        <div className="flex items-center gap-2 text-sm text-neutral-600">
+        <p className="min-w-0 truncate font-semibold">{message.userName}</p>
+        <div className="flex shrink-0 items-center gap-2 text-sm whitespace-nowrap text-neutral-600">
           {canChange && (
             <button
               type="button"
               aria-label="Edit message"
               onClick={startEditing}
-              className="opacity-0 group-hover:opacity-100 hover:text-neutral-900 focus:opacity-100"
+              className="p-1 opacity-0 group-hover:opacity-100 hover:text-neutral-900 focus:opacity-100 active:scale-90 pointer-coarse:opacity-100"
             >
               <Pencil className="size-4" />
             </button>
@@ -78,7 +78,7 @@ const MessageItem = ({
               type="button"
               aria-label="Delete message"
               onClick={() => onDelete(message.id)}
-              className="opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100"
+              className="p-1 opacity-0 group-hover:opacity-100 hover:text-red-600 focus:opacity-100 active:scale-90 pointer-coarse:opacity-100"
             >
               <Trash2 className="size-4" />
             </button>

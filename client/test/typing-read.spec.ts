@@ -30,13 +30,13 @@ test("a message is only Seen once the other person opens the chat", async ({
   newPerson,
 }) => {
   const { alice, bob } = await startChat(newPerson);
-  await bob.getByRole("button", { name: "Participants (2)" }).click();
+  await bob.getByRole("tab", { name: "Participants (2)" }).click();
 
   await sendMessage(alice, "are you there?");
   await expect(bob.getByText("are you there?")).toBeAttached();
   const seen = messageRow(alice, "are you there?").getByLabel("Seen");
   await expect(seen).toHaveCount(0);
 
-  await bob.getByRole("button", { name: "Chat" }).click();
+  await bob.getByRole("tab", { name: "Chat" }).click();
   await expect(seen).toBeVisible();
 });

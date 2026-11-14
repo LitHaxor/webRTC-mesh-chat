@@ -16,12 +16,13 @@ const MessageForm = ({ onSend, onTyping }: Props) => {
   const [picker, setPicker] = useState<Picker>(null);
 
   const toggle = (next: Picker) => setPicker(picker === next ? null : next);
+  const hasDraft = draft.trim() !== "";
 
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (draft.trim() && onSend(draft)) setDraft("");
+        if (hasDraft && onSend(draft)) setDraft("");
       }}
       className="relative m-3 flex flex-col gap-4 rounded border border-neutral-300 p-3 focus-within:border-blue-600"
     >
@@ -55,7 +56,12 @@ const MessageForm = ({ onSend, onTyping }: Props) => {
         className="text-sm outline-none placeholder:text-neutral-500"
       />
       <div className="flex items-center gap-3 text-neutral-600">
-        <button type="button" disabled aria-label="Attach file">
+        <button
+          type="button"
+          disabled
+          aria-label="Attach file"
+          className="disabled:opacity-40"
+        >
           <Plus className="size-6" />
         </button>
         <button
@@ -63,7 +69,7 @@ const MessageForm = ({ onSend, onTyping }: Props) => {
           aria-label="Add emoji"
           aria-expanded={picker === "emoji"}
           onClick={() => toggle("emoji")}
-          className="hover:text-neutral-900"
+          className="hover:text-neutral-900 active:scale-90"
         >
           <Smile className="size-6" />
         </button>
@@ -74,14 +80,15 @@ const MessageForm = ({ onSend, onTyping }: Props) => {
           disabled={!hasGiphy}
           title={hasGiphy ? undefined : "Set VITE_GIPHY_API_KEY to search GIFs"}
           onClick={() => toggle("gif")}
-          className="rounded border-2 border-current px-1 text-xs font-bold hover:text-neutral-900 disabled:opacity-40"
+          className="rounded border-2 border-current px-1 text-xs font-bold hover:text-neutral-900 active:scale-90 disabled:opacity-40"
         >
           GIF
         </button>
         <button
           type="submit"
           aria-label="Send"
-          className="ml-auto hover:text-neutral-900"
+          disabled={!hasDraft}
+          className="ml-auto text-blue-600 hover:text-blue-700 active:scale-90 disabled:text-neutral-400"
         >
           <SendHorizontal className="size-6" />
         </button>

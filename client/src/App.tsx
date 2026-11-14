@@ -11,8 +11,8 @@ const App = () => {
   const create = useStore((state) => state.create);
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-neutral-200 p-4 text-neutral-800">
-      <div className="flex h-160 max-h-full w-full max-w-sm flex-col rounded-lg bg-white shadow-lg">
+    <main className="flex min-h-dvh items-center justify-center bg-neutral-200 text-neutral-800 sm:p-4">
+      <div className="flex h-dvh w-full flex-col bg-white sm:h-160 sm:max-h-[calc(100dvh-2rem)] sm:max-w-sm sm:rounded-lg sm:shadow-lg">
         {room && (
           <>
             <Header title={room.name} onLeave={leaveRoom} />

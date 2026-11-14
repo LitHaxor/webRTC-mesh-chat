@@ -14,7 +14,7 @@ const Header = ({ title, onLeave }: Props) => {
           type="button"
           aria-label="Leave room"
           onClick={onLeave}
-          className="text-neutral-600 hover:text-neutral-900"
+          className="text-neutral-600 hover:text-neutral-900 active:scale-90"
         >
           <X className="size-6" />
         </button>

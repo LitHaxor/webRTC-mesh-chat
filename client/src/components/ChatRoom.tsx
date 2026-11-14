@@ -19,6 +19,8 @@ const TabButton = ({ isActive, onClick, children }: TabButtonProps) => {
   return (
     <button
       type="button"
+      role="tab"
+      aria-selected={isActive}
       onClick={onClick}
       className={`flex-1 rounded py-2 font-semibold ${isActive ? "bg-white text-blue-600 shadow-sm" : ""}`}
     >
@@ -85,7 +87,10 @@ const ChatRoom = () => {
 
   return (
     <>
-      <div className="mx-3 mt-3 flex rounded-md bg-neutral-200 p-1">
+      <div
+        role="tablist"
+        className="mx-3 mt-3 flex rounded-md bg-neutral-200 p-1"
+      >
         <TabButton
           isActive={tab === "participants"}
           onClick={() => setTab("participants")}
@@ -98,7 +103,7 @@ const ChatRoom = () => {
       </div>
 
       {tab === "participants" && (
-        <ParticipantList participants={participants} />
+        <ParticipantList participants={participants} you={name} />
       )}
       <div hidden={tab !== "chat"} className="flex min-h-0 flex-1 flex-col">
         <MessageList

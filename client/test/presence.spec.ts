@@ -14,7 +14,7 @@ test("the participants tab shows both people as active", async ({
 }) => {
   const { alice } = await startChat(newPerson);
 
-  await alice.getByRole("button", { name: "Participants (2)" }).click();
+  await alice.getByRole("tab", { name: "Participants (2)" }).click();
 
   await expect(alice.getByRole("list")).toContainText(["Alice"]);
   await expect(alice.getByRole("list")).toContainText(["Bob"]);
@@ -29,9 +29,9 @@ test("leaving and coming back shows left, then rejoined", async ({
   await bob.reload();
   await expect(chatOf(alice)).toContainText("Bob left");
 
-  await alice.getByRole("button", { name: "Participants" }).click();
+  await alice.getByRole("tab", { name: "Participants" }).click();
   await expect(alice.getByTitle("Left")).toHaveCount(1);
-  await alice.getByRole("button", { name: "Chat" }).click();
+  await alice.getByRole("tab", { name: "Chat" }).click();
 
   await joinRoom(bob, "Bob", roomName);
   await expect(chatOf(alice)).toContainText("Bob rejoined");

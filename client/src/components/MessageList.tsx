@@ -31,7 +31,7 @@ const MessageList = ({ events, userId, seenId, onEdit, onDelete }: Props) => {
       return;
     }
     const observer = new ResizeObserver(() =>
-      list.scrollTo({ top: list.scrollHeight }),
+      list.scrollTo({ top: list.scrollHeight, behavior: "instant" }),
     );
     for (const item of list.children) {
       observer.observe(item);
@@ -50,7 +50,7 @@ const MessageList = ({ events, userId, seenId, onEdit, onDelete }: Props) => {
 
   const scrollToBottom = () => {
     const list = listRef.current;
-    list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+    list?.scrollTo({ top: list.scrollHeight });
   };
 
   return (
@@ -58,7 +58,7 @@ const MessageList = ({ events, userId, seenId, onEdit, onDelete }: Props) => {
       <ul
         ref={listRef}
         onScroll={updateIsAtBottom}
-        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-4"
+        className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 py-4 motion-safe:scroll-smooth"
       >
         {events.map((event, index) => {
           if ("payload" in event) {
@@ -85,7 +85,10 @@ const MessageList = ({ events, userId, seenId, onEdit, onDelete }: Props) => {
               <span className="flex-1 italic">
                 {event.userName} {event.type}
               </span>
-              <time title={formatTime(event.createdAt)} className="text-sm">
+              <time
+                title={formatTime(event.createdAt)}
+                className="shrink-0 text-sm whitespace-nowrap"
+              >
                 {formatRelativeTime(event.createdAt, now)}
               </time>
             </li>
@@ -97,7 +100,7 @@ const MessageList = ({ events, userId, seenId, onEdit, onDelete }: Props) => {
           type="button"
           aria-label="Scroll to the newest message"
           onClick={scrollToBottom}
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-neutral-200 bg-white p-2 text-blue-600 shadow-md hover:bg-neutral-50"
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-neutral-200 bg-white p-2 text-blue-600 shadow-md hover:bg-neutral-50 active:scale-90"
         >
           <ArrowDown className="size-5" />
         </button>
