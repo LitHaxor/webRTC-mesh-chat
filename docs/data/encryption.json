@@ -1,0 +1,158 @@
+{
+  "crypto": {
+    "sweep": [
+      {
+        "size": 100,
+        "textBytes": 100,
+        "ok": true,
+        "frameBytes": 210,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": null
+      },
+      {
+        "size": 1000,
+        "textBytes": 1000,
+        "ok": true,
+        "frameBytes": 1410,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": null
+      },
+      {
+        "size": 10000,
+        "textBytes": 10000,
+        "ok": true,
+        "frameBytes": 13410,
+        "encryptMs": 0.10000002384185791,
+        "decryptMs": 0.30000001192092896,
+        "error": null
+      },
+      {
+        "size": 25000,
+        "textBytes": 25000,
+        "ok": true,
+        "frameBytes": 33410,
+        "encryptMs": 0.2999999523162842,
+        "decryptMs": 1,
+        "error": null
+      },
+      {
+        "size": 50000,
+        "textBytes": 50000,
+        "ok": true,
+        "frameBytes": 66742,
+        "encryptMs": 0.699999988079071,
+        "decryptMs": 1.5,
+        "error": null
+      },
+      {
+        "size": 75000,
+        "textBytes": 75000,
+        "ok": true,
+        "frameBytes": 100078,
+        "encryptMs": 1.100000023841858,
+        "decryptMs": 2.199999988079071,
+        "error": null
+      },
+      {
+        "size": 100000,
+        "textBytes": 100000,
+        "ok": true,
+        "frameBytes": 133410,
+        "encryptMs": 1.4000000357627869,
+        "decryptMs": 3.099999964237213,
+        "error": null
+      },
+      {
+        "size": 125000,
+        "textBytes": 125000,
+        "ok": false,
+        "frameBytes": 0,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": "RangeError: Maximum call stack size exceeded"
+      },
+      {
+        "size": 150000,
+        "textBytes": 150000,
+        "ok": false,
+        "frameBytes": 0,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": "RangeError: Maximum call stack size exceeded"
+      },
+      {
+        "size": 200000,
+        "textBytes": 200000,
+        "ok": false,
+        "frameBytes": 0,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": "RangeError: Maximum call stack size exceeded"
+      },
+      {
+        "size": 250000,
+        "textBytes": 250000,
+        "ok": false,
+        "frameBytes": 0,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": "RangeError: Maximum call stack size exceeded"
+      },
+      {
+        "size": 500000,
+        "textBytes": 500000,
+        "ok": false,
+        "frameBytes": 0,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": "RangeError: Maximum call stack size exceeded"
+      },
+      {
+        "size": 1000000,
+        "textBytes": 1000000,
+        "ok": false,
+        "frameBytes": 0,
+        "encryptMs": 0,
+        "decryptMs": 0,
+        "error": "RangeError: Maximum call stack size exceeded"
+      }
+    ],
+    "largestAscii": 123631,
+    "largestEmoji": 30907,
+    "channelLimit": 262144
+  },
+  "delivered": [
+    {
+      "size": 1000,
+      "arrived": true,
+      "stuck": false
+    },
+    {
+      "size": 50000,
+      "arrived": true,
+      "stuck": false
+    },
+    {
+      "size": 100000,
+      "arrived": true,
+      "stuck": false
+    },
+    {
+      "size": 150000,
+      "arrived": false,
+      "stuck": true
+    },
+    {
+      "size": 200000,
+      "arrived": false,
+      "stuck": true
+    },
+    {
+      "size": 300000,
+      "arrived": false,
+      "stuck": true
+    }
+  ]
+}

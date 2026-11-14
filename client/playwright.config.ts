@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "test",
+  testIgnore: "load-test/**",
   use: { baseURL: "http://localhost:5175", channel: "chrome" },
   webServer: [
     {

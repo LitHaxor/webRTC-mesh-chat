@@ -1,0 +1,79 @@
+{
+  "100": {
+    "size": 100,
+    "renderMs": 70.79999995231628,
+    "fps": 60.4,
+    "worstFrameMs": 23.80000001192093,
+    "longTaskMs": 0,
+    "domNodes": 937,
+    "heapMb": 41.935818672180176,
+    "receiveMs": 24,
+    "sendMs": 9
+  },
+  "500": {
+    "size": 500,
+    "renderMs": 174.0999999642372,
+    "fps": 57.6,
+    "worstFrameMs": 94.69999998807907,
+    "longTaskMs": 232,
+    "domNodes": 4107,
+    "heapMb": 49.10578632354736,
+    "receiveMs": 41,
+    "sendMs": 34
+  },
+  "1000": {
+    "size": 1000,
+    "renderMs": 256.5,
+    "fps": 56.6,
+    "worstFrameMs": 123.09999996423721,
+    "longTaskMs": 466,
+    "domNodes": 7877,
+    "heapMb": 54.06398391723633,
+    "receiveMs": 69,
+    "sendMs": 67
+  },
+  "2500": {
+    "size": 2500,
+    "renderMs": 522,
+    "fps": 50,
+    "worstFrameMs": 231,
+    "longTaskMs": 999,
+    "domNodes": 19715,
+    "heapMb": 72.3789291381836,
+    "receiveMs": 170,
+    "sendMs": 167
+  },
+  "5000": {
+    "size": 5000,
+    "renderMs": 613.1000000238419,
+    "fps": 38.4,
+    "worstFrameMs": 414.80000001192093,
+    "longTaskMs": 1874,
+    "domNodes": 39731,
+    "heapMb": 96.06244659423828,
+    "receiveMs": 796,
+    "sendMs": 371
+  },
+  "10000": {
+    "size": 10000,
+    "renderMs": 1203,
+    "fps": 10.6,
+    "worstFrameMs": 785.4000000357628,
+    "longTaskMs": 3724,
+    "domNodes": 78828,
+    "heapMb": 139.83184909820557,
+    "receiveMs": 1573,
+    "sendMs": 749
+  },
+  "20000": {
+    "size": 20000,
+    "renderMs": 2224.199999988079,
+    "fps": 1.4,
+    "worstFrameMs": 1760.9000000357628,
+    "longTaskMs": 4530,
+    "domNodes": 157209,
+    "heapMb": 241.62923908233643,
+    "receiveMs": 4802,
+    "sendMs": 1614
+  }
+}

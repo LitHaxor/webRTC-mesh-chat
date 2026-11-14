@@ -11,12 +11,13 @@
     "preview": "vite preview",
     "test": "vitest run src",
     "test:e2e": "playwright test",
+    "load-test": "playwright test -c playwright.load-test.config.ts",
     "test:coverage": "vitest run src --coverage"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.5",
-    "@vitest/coverage-v8": "^5.1.0",
     "@tanstack/react-virtual": "^3.14.26",
+    "@vitest/coverage-v8": "^5.1.0",
     "axios": "^1.21.1",
     "emoji-picker-react": "^5.1.4",
     "firebase": "^13.3.0",
