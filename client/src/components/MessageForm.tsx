@@ -3,9 +3,10 @@ import { useState } from "react";
 
 type Props = {
   onSend: (text: string) => boolean;
+  onTyping: () => void;
 };
 
-const MessageForm = ({ onSend }: Props) => {
+const MessageForm = ({ onSend, onTyping }: Props) => {
   const [draft, setDraft] = useState("");
 
   return (
@@ -18,7 +19,10 @@ const MessageForm = ({ onSend }: Props) => {
     >
       <input
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          onTyping();
+        }}
         placeholder="Write to everyone"
         className="text-sm outline-none placeholder:text-neutral-500"
       />

@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { CheckCheck, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Message } from "../types/message.ts";
 import { formatRelativeTime, formatTime } from "../utils/formatTime.ts";
@@ -7,12 +7,20 @@ import { linkify } from "../utils/linkify.tsx";
 type Props = {
   message: Message;
   isOwn: boolean;
+  isSeen: boolean;
   now: number;
   onEdit: (id: string, text: string) => boolean;
   onDelete: (id: string) => boolean;
 };
 
-const MessageItem = ({ message, isOwn, now, onEdit, onDelete }: Props) => {
+const MessageItem = ({
+  message,
+  isOwn,
+  isSeen,
+  now,
+  onEdit,
+  onDelete,
+}: Props) => {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(message.text);
 
@@ -66,6 +74,9 @@ const MessageItem = ({ message, isOwn, now, onEdit, onDelete }: Props) => {
           <time title={formatTime(message.createdAt)}>
             {formatRelativeTime(message.createdAt, now)}
           </time>
+          {isSeen && (
+            <CheckCheck aria-label="Seen" className="size-4 text-blue-600" />
+          )}
         </div>
       </div>
 

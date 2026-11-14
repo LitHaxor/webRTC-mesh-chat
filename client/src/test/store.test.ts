@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useStore } from "../store/index.ts";
 import type { ChatEvent } from "../types/events.ts";
 import {
@@ -69,7 +69,13 @@ beforeEach(() => {
     peer: null,
     room: standup,
     events: [],
+    typing: null,
+    seenId: null,
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 it("joins a room", async () => {
@@ -286,4 +292,50 @@ it("ignores an edit to a message the other person deleted", () => {
 
   const [event] = useStore.getState().events as ChatEvent[];
   expect(event.payload.message.text).toBe("");
+});
+
+it("tells the other person you are typing, at most every two seconds", () => {
+  vi.useFakeTimers();
+  const { notifyTyping } = useStore.getState();
+
+  notifyTyping();
+  notifyTyping();
+  vi.advanceTimersByTime(2000);
+  notifyTyping();
+
+  expect(sendData).toHaveBeenCalledTimes(2);
+  expect(sendData).toHaveBeenCalledWith(
+    JSON.stringify({ type: "typing", userName: "Alice" }),
+  );
+});
+
+it("shows who is typing until a few seconds pass", () => {
+  vi.useFakeTimers();
+
+  receive(JSON.stringify({ type: "typing", userName: "Bob" }));
+  expect(useStore.getState().typing).toBe("Bob");
+
+  vi.advanceTimersByTime(3000);
+  expect(useStore.getState().typing).toBeNull();
+});
+
+it("stops showing typing once their message arrives", () => {
+  receive(JSON.stringify({ type: "typing", userName: "Bob" }));
+  receive(JSON.stringify(sentByBob));
+
+  expect(useStore.getState().typing).toBeNull();
+});
+
+it("sends a read receipt for a message", () => {
+  useStore.getState().markRead("m1");
+
+  expect(sendData).toHaveBeenCalledWith(
+    JSON.stringify({ type: "read", messageId: "m1" }),
+  );
+});
+
+it("remembers which of your messages the other person has seen", () => {
+  receive(JSON.stringify({ type: "read", messageId: "m1" }));
+
+  expect(useStore.getState().seenId).toBe("m1");
 });

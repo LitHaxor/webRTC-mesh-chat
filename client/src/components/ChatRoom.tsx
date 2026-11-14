@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useStore } from "../store/index.ts";
+import type { ChatEvent, RoomEvent } from "../types/events.ts";
 import { getParticipants } from "../utils/participants.ts";
 import MessageForm from "./MessageForm.tsx";
 import MessageList from "./MessageList.tsx";
@@ -26,21 +27,61 @@ const TabButton = ({ isActive, onClick, children }: TabButtonProps) => {
   );
 };
 
+const lastReceivedId = (events: (ChatEvent | RoomEvent)[], userId: string) => {
+  const received = events.findLast(
+    (event): event is ChatEvent =>
+      "payload" in event && event.payload.message.userId !== userId,
+  );
+  return received?.payload.message.id;
+};
+
 const ChatRoom = () => {
-  const { name, peer, events, userId, send, edit, remove } = useStore(
+  const {
+    name,
+    peer,
+    events,
+    userId,
+    typing,
+    seenId,
+    send,
+    edit,
+    remove,
+    notifyTyping,
+    markRead,
+  } = useStore(
     useShallow((state) => ({
       name: state.name,
       peer: state.peer,
       events: state.events,
       userId: state.userId,
+      typing: state.typing,
+      seenId: state.seenId,
       send: state.send,
       edit: state.edit,
       remove: state.remove,
+      notifyTyping: state.notifyTyping,
+      markRead: state.markRead,
     })),
   );
   const [tab, setTab] = useState<Tab>("chat");
 
   const participants = name ? getParticipants(name, peer, events) : [];
+  const latestId = lastReceivedId(events, userId);
+
+  useEffect(() => {
+    if (!latestId || tab !== "chat") {
+      return;
+    }
+    const markLatestRead = () => {
+      if (document.visibilityState === "visible") {
+        markRead(latestId);
+      }
+    };
+    markLatestRead();
+    document.addEventListener("visibilitychange", markLatestRead);
+    return () =>
+      document.removeEventListener("visibilitychange", markLatestRead);
+  }, [latestId, tab, markRead]);
 
   return (
     <>
@@ -63,10 +104,16 @@ const ChatRoom = () => {
         <MessageList
           events={events}
           userId={userId}
+          seenId={seenId}
           onEdit={edit}
           onDelete={remove}
         />
-        <MessageForm onSend={send} />
+        {typing && (
+          <p className="px-6 text-sm italic text-neutral-500">
+            {typing} is typing…
+          </p>
+        )}
+        <MessageForm onSend={send} onTyping={notifyTyping} />
       </div>
     </>
   );

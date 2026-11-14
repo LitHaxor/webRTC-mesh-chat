@@ -1,10 +1,18 @@
 import type { StateCreator } from "zustand";
 import { sendData } from "../libs/rtc.ts";
-import type { ChatEvent, RoomEvent } from "../types/events.ts";
+import type {
+  ChatEvent,
+  ReadEvent,
+  RoomEvent,
+  TypingEvent,
+} from "../types/events.ts";
 import type { Message } from "../types/message.ts";
 import type { RoomSlice } from "./roomSlice.ts";
 
 const userId = crypto.randomUUID();
+
+const TYPING_INTERVAL_MS = 2000;
+let lastTypingAt = 0;
 
 const isMessage = (
   event: ChatEvent | RoomEvent,
@@ -24,11 +32,15 @@ const findMessage = (events: (ChatEvent | RoomEvent)[], id: string) => {
 export type ChatSlice = {
   userId: string;
   events: (ChatEvent | RoomEvent)[];
+  typing: string | null;
+  seenId: string | null;
   addEvent: (event: ChatEvent | RoomEvent) => void;
   updateMessage: (message: Message) => boolean;
   send: (text: string) => boolean;
   edit: (id: string, text: string) => boolean;
   remove: (id: string) => boolean;
+  notifyTyping: () => void;
+  markRead: (id: string) => void;
 };
 
 export const createChatSlice: StateCreator<
@@ -67,6 +79,8 @@ export const createChatSlice: StateCreator<
   return {
     userId,
     events: [],
+    typing: null,
+    seenId: null,
     addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
     updateMessage: (message) => {
       const original = findMessage(get().events, message.id);
@@ -118,5 +132,22 @@ export const createChatSlice: StateCreator<
       changeOwnMessage("edited", id, { text, editedAt: Date.now() }),
     remove: (id) =>
       changeOwnMessage("deleted", id, { text: "", deletedAt: Date.now() }),
+    notifyTyping: () => {
+      const { name } = get();
+      if (!name) {
+        return;
+      }
+      const now = Date.now();
+      if (now - lastTypingAt < TYPING_INTERVAL_MS) {
+        return;
+      }
+      lastTypingAt = now;
+      const event: TypingEvent = { type: "typing", userName: name };
+      sendData(JSON.stringify(event));
+    },
+    markRead: (id) => {
+      const event: ReadEvent = { type: "read", messageId: id };
+      sendData(JSON.stringify(event));
+    },
   };
 };

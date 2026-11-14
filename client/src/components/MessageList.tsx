@@ -7,11 +7,12 @@ import MessageItem from "./MessageItem.tsx";
 type Props = {
   events: (ChatEvent | RoomEvent)[];
   userId: string;
+  seenId: string | null;
   onEdit: (id: string, text: string) => boolean;
   onDelete: (id: string) => boolean;
 };
 
-const MessageList = ({ events, userId, onEdit, onDelete }: Props) => {
+const MessageList = ({ events, userId, seenId, onEdit, onDelete }: Props) => {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -29,6 +30,7 @@ const MessageList = ({ events, userId, onEdit, onDelete }: Props) => {
               key={message.id}
               message={message}
               isOwn={message.userId === userId}
+              isSeen={message.id === seenId}
               now={now}
               onEdit={onEdit}
               onDelete={onDelete}

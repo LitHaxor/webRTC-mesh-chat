@@ -20,3 +20,13 @@ export interface RoomEvent {
   userName: string;
   createdAt: number;
 }
+
+export interface TypingEvent {
+  type: "typing";
+  userName: string;
+}
+
+export interface ReadEvent {
+  type: "read";
+  messageId: string;
+}
