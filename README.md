@@ -191,27 +191,41 @@ client/src/
   components/
     Header.tsx         title and leave button
     Lobby.tsx          name, room list, create room
-    ChatRoom.tsx       tabs, participants, messages, composer
-    MessageList.tsx    messages and join/leave rows
-    MessageItem.tsx    one message, with editing for your own
-    MessageForm.tsx    message input
+    ChatRoom.tsx       tabs, participants, messages, composer, read receipts
+    MessageList.tsx    messages, join/leave rows, scrolling to the newest
+    MessageItem.tsx    one message: editing your own, sending and seen ticks
+    MessageForm.tsx    composer with the emoji and GIF pickers
+    GifPicker.tsx      Giphy search
+    LinkPreview.tsx    a card for the first link in a message
     ParticipantList.tsx  people in the room
     Avatar.tsx         initials and active indicator
+  anims/
+    Hairline.tsx       mounts an empty-state figure and plays its tour
+    table.ts           the empty chat: a table with every seat empty
+    corridor.ts        the empty lobby: a corridor of closed doors
+    core/              the hairline engine (MIT licence), unchanged
   store/
     index.ts           store, connects rtc events to it
-    roomSlice.ts       name, room, peer, join, create
-    chatSlice.ts       events, send, edit, remove
+    roomSlice.ts       name, room, peer, join (with saved history), create
+    chatSlice.ts       events, send, edit, remove, typing, read receipts, saving
   types/
-    events.ts          ChatEvent, RoomEvent
+    events.ts          ChatEvent, RoomEvent, TypingEvent, ReadEvent
+    frames.ts          what crosses the data channel: KeyFrame, EncryptedFrame
     message.ts         Message
     room.ts            Room
     signaling.ts       Signaling interface both backends implement
   utils/
     formatTime.ts      "5 minutes ago" and 09:21 times
-    linkify.tsx        turns URLs in a message into links
+    linkify.tsx        links, the first link, and image-only messages
     participants.ts    who has been in the room, and who is active
   libs/
     rtc.ts             peer connection, data channel, reconnect
+    secureChannel.ts   key exchange, then every event encrypted, in order
+    crypto.ts          ECDH key pairs, AES-GCM encrypt and decrypt
+    indexdb.ts         saved messages per room, in IndexedDB
+    api.ts             axios client for signal-svc's HTTP API
+    previews.ts        link previews from signal-svc
+    giphy.ts           Giphy search
     firebase.ts        Firestore setup
     signaling/
       index.ts         picks a backend from the URL path
@@ -226,6 +240,10 @@ signal-svc/app/
     base.py            /api router
     v1/
       base.py          /v1 router
+      previews/
+        routers.py     GET /api/v1/previews?url=
+        handlers/
+          previews.py      fetches a page and reads its Open Graph tags
       signaling/
         routers.py     WebSocket on /api/v1/signaling/ws
         handlers/
@@ -247,7 +265,7 @@ Makefile               up, down, logs, install and test for the whole repo
 
 ## Message protocol
 
-Peers exchange events as JSON strings over one WebRTC data channel, one event per `send()`. The channel uses WebRTC's default settings, so events arrive reliably and in order. The types live in [`client/src/types/events.ts`](client/src/types/events.ts).
+Peers exchange events as JSON over one WebRTC data channel, one event per frame, each frame encrypted (see [Encryption](#encryption)). The channel uses WebRTC's default settings, so frames arrive reliably and in order. The types live in [`client/src/types/events.ts`](client/src/types/events.ts).
 
 ### Event types
 
@@ -259,6 +277,8 @@ Peers exchange events as JSON strings over one WebRTC data channel, one event pe
 | `joined` | room | yes | Sent by each side when the data channel opens. |
 | `left` | room | no | Added locally when the data channel closes. |
 | `rejoined` | room | no | Added locally instead of `joined` when that person has left before. |
+| `typing` | presence | yes | `{ "type": "typing", "userName": "Alice" }`, sent at most every 2 seconds while you type. The receiver shows "Alice is typing…" for 3 seconds, or until her message arrives. |
+| `read` | presence | yes | `{ "type": "read", "messageId": "…" }`, sent for the newest message from the other person while you're looking at the chat. The sender shows a double tick on it. |
 
 The receiver ignores any other type, and any `left` or `rejoined` that arrives over the channel, and logs a warning.
 
@@ -306,6 +326,35 @@ Both reuse the chat event shape and point at the original message by `payload.me
 - **`edited`:** carries the whole message with the new `text` and an `editedAt` time; `createdAt` keeps the original time. The receiver replaces the message with that `id`, and both people see "(edited)" next to it.
 - **`deleted`:** carries the message with `text` emptied and a `deletedAt` time. The receiver keeps the entry and shows "Message deleted" in its place, so both people can see that something was removed. A deleted message can't be edited again.
 - **Ownership:** a receiver ignores an edit or delete whose `payload.message.userId` does not match the original message's `userId`, so people can only change their own messages.
+
+### Encryption
+
+Every event above travels encrypted. The data channel only ever carries two kinds of frame, defined in [`types/frames.ts`](client/src/types/frames.ts):
+
+| Frame | Fields | Meaning |
+|---|---|---|
+| `key` | `publicKey` (JWK) | This browser's ECDH P-256 public key, sent once when the channel opens. It's meant to be public. |
+| `encrypted` | `iv`, `data` (base64) | One event of any type above, encrypted with AES-GCM under the shared key. |
+
+```mermaid
+sequenceDiagram
+  participant A as Alice's browser
+  participant B as Bob's browser
+
+  Note over A,B: The channel opens. Each side makes a new ECDH key pair, and the private key never leaves its browser.
+  A-)B: key (Alice's public key)
+  B-)A: key (Bob's public key)
+  A->>A: shared AES-GCM key = Alice's private key + Bob's public key
+  B->>B: the same key = Bob's private key + Alice's public key
+  A-)B: encrypted (joined)
+  A-)B: encrypted (sent "hi")
+  B->>B: decrypt, then handle it like any event
+```
+
+- Each frame gets a fresh random 12-byte IV, so the same text never looks the same twice, and AES-GCM rejects a frame that was changed on the way.
+- Events sent before the keys are exchanged wait in a queue. Frames go out and are decrypted strictly in order.
+- Until your message's frame has actually gone out, it shows a clock instead of a tick.
+- [`libs/crypto.ts`](client/src/libs/crypto.ts) does the cryptography with the browser's Web Crypto API. [`libs/secureChannel.ts`](client/src/libs/secureChannel.ts) wraps the data channel, so the store and the UI never see a key.
 
 ## Trade-offs and known issues
 
@@ -361,3 +410,11 @@ flowchart TD
 | Bob reloads a few milliseconds after an edit or delete | The IndexedDB write may not have finished, so his copy can miss that change, while Alice's has it. |
 
 I chose peer-to-peer because the brief prefers it and because it keeps every message off the server. The cost is in this table: both people have to be online, and history is only as complete as each browser's copy.
+
+### End-to-end encryption
+
+- **The server never has a key.** No private key ever leaves a browser, and the public keys go straight between the two browsers over the data channel. signal-svc sees room names, offers, answers and when people connect, which is metadata, never a message.
+- **Keys aren't verified.** A signaling server that wanted to could sit in the middle of the WebRTC setup and swap the keys without either person noticing. Apps like Signal and WhatsApp let people compare a safety number to rule that out; this app doesn't have one yet.
+- **Saved messages aren't encrypted on the device.** IndexedDB holds the decrypted text, the same as most chat apps' local storage.
+- **New keys for every connection.** A key pair lives only as long as one data channel, so there is no long-term private key to steal.
+- **Why ECDH and AES-GCM rather than plain RSA.** RSA-OAEP with a 2048-bit key can only encrypt about 190 bytes, which a long message or a GIF link can exceed. Using the key pairs to agree on a shared key, then encrypting with that, has no size limit, and it's what Signal and WhatsApp do too.

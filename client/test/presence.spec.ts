@@ -56,3 +56,14 @@ test("when the host leaves, the person who stays re-opens the room", async ({
   await sendMessage(carol, "hi bob");
   await expect(chatOf(bob)).toContainText("hi bob");
 });
+
+test("the close button takes you back to the lobby, and the other person sees you left", async ({
+  newPerson,
+}) => {
+  const { alice, bob } = await startChat(newPerson);
+
+  await bob.getByRole("button", { name: "Leave room" }).click();
+
+  await expect(bob.getByRole("heading", { name: "Chat rooms" })).toBeVisible();
+  await expect(chatOf(alice)).toContainText("Bob left");
+});

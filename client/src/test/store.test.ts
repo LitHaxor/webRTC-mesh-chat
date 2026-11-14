@@ -78,6 +78,7 @@ beforeEach(() => {
     events: [],
     typing: null,
     seenId: null,
+    sendingIds: [],
   });
 });
 
@@ -124,7 +125,7 @@ it("stays in the lobby when creating a room fails", async () => {
 });
 
 it("adds a message once it is sent", () => {
-  vi.mocked(sendData).mockReturnValue(true);
+  vi.mocked(sendData).mockReturnValue(Promise.resolve(true));
 
   expect(useStore.getState().send("hi")).toBe(true);
   expect(useStore.getState().events).toEqual([
@@ -146,7 +147,7 @@ it("adds a message once it is sent", () => {
 });
 
 it("keeps nothing when the message could not be sent", () => {
-  vi.mocked(sendData).mockReturnValue(false);
+  vi.mocked(sendData).mockReturnValue(null);
 
   expect(useStore.getState().send("hi")).toBe(false);
   expect(useStore.getState().events).toEqual([]);
@@ -193,7 +194,7 @@ it("tracks when someone joins, leaves and rejoins", () => {
 });
 
 it("edits your own message and tells the other person", () => {
-  vi.mocked(sendData).mockReturnValue(true);
+  vi.mocked(sendData).mockReturnValue(Promise.resolve(true));
   useStore.getState().send("hi");
   const [sent] = useStore.getState().events as ChatEvent[];
   const { id, createdAt } = sent.payload.message;
@@ -220,10 +221,10 @@ it("cannot edit someone else's message", () => {
 });
 
 it("keeps your message unchanged when the edit could not be sent", () => {
-  vi.mocked(sendData).mockReturnValue(true);
+  vi.mocked(sendData).mockReturnValue(Promise.resolve(true));
   useStore.getState().send("hi");
   const [sent] = useStore.getState().events as ChatEvent[];
-  vi.mocked(sendData).mockReturnValue(false);
+  vi.mocked(sendData).mockReturnValue(null);
 
   expect(useStore.getState().edit(sent.payload.message.id, "hello")).toBe(
     false,
@@ -252,7 +253,7 @@ it("ignores an edit that claims a different author", () => {
 });
 
 it("deletes your own message and tells the other person", () => {
-  vi.mocked(sendData).mockReturnValue(true);
+  vi.mocked(sendData).mockReturnValue(Promise.resolve(true));
   useStore.getState().send("hi");
   const [sent] = useStore.getState().events as ChatEvent[];
 
@@ -284,7 +285,7 @@ it("applies a delete from the other person", () => {
 });
 
 it("cannot edit a deleted message", () => {
-  vi.mocked(sendData).mockReturnValue(true);
+  vi.mocked(sendData).mockReturnValue(Promise.resolve(true));
   useStore.getState().send("hi");
   const [sent] = useStore.getState().events as ChatEvent[];
   useStore.getState().remove(sent.payload.message.id);
@@ -348,7 +349,7 @@ it("remembers which of your messages the other person has seen", () => {
 });
 
 it("saves a message you send", () => {
-  vi.mocked(sendData).mockReturnValue(true);
+  vi.mocked(sendData).mockReturnValue(Promise.resolve(true));
   useStore.getState().send("hi");
   const [sent] = useStore.getState().events as ChatEvent[];
 
@@ -359,7 +360,7 @@ it("saves a message you send", () => {
 });
 
 it("does not save a message that could not be sent", () => {
-  vi.mocked(sendData).mockReturnValue(false);
+  vi.mocked(sendData).mockReturnValue(null);
   useStore.getState().send("hi");
 
   expect(chatDatabase.save).not.toHaveBeenCalled();
@@ -421,4 +422,27 @@ it("keeps the message on screen when it cannot be saved", async () => {
 
   await vi.waitFor(() => expect(console.error).toHaveBeenCalled());
   expect(useStore.getState().events).toEqual([sentByBob]);
+});
+
+it("shows a message as sending until it is encrypted and sent", async () => {
+  const sending = Promise.withResolvers<boolean>();
+  vi.mocked(sendData).mockReturnValue(sending.promise);
+
+  useStore.getState().send("hi");
+  const [sent] = useStore.getState().events as ChatEvent[];
+  expect(useStore.getState().sendingIds).toEqual([sent.payload.message.id]);
+
+  sending.resolve(true);
+
+  await vi.waitFor(() => expect(useStore.getState().sendingIds).toEqual([]));
+});
+
+it("keeps a message marked as sending when it could not be sent", async () => {
+  vi.mocked(sendData).mockReturnValue(Promise.resolve(false));
+
+  useStore.getState().send("hi");
+  const [sent] = useStore.getState().events as ChatEvent[];
+  await Promise.resolve();
+
+  expect(useStore.getState().sendingIds).toEqual([sent.payload.message.id]);
 });

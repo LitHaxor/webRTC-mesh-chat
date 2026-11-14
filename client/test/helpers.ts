@@ -18,9 +18,7 @@ export const test = base.extend<{ newPerson: NewPerson }>({
       contexts.push(context);
       return context.newPage();
     });
-    for (const context of contexts) {
-      await context.close();
-    }
+    await Promise.all(contexts.map((context) => context.close()));
   },
 });
 
@@ -83,17 +81,39 @@ export const startChat = async (newPerson: NewPerson, path = "/") => {
   return { alice, bob, roomName };
 };
 
+type OriginWithIndexedDB = {
+  indexedDB?: { stores: { name: string; records: { value: unknown }[] }[] }[];
+};
+
 export const savedTexts = async (page: Page) => {
-  const { origins } = await page.context().storageState({ indexedDB: true });
-  const stores = origins.flatMap(({ indexedDB = [] }) =>
-    indexedDB.flatMap((database) => database.stores),
-  );
-  const records = stores.find(({ name }) => name === "messages")?.records ?? [];
-  const messages = records.map(
-    ({ value }) => (value as { message: Message }).message,
+  const state = await page.context().storageState({ indexedDB: true });
+  const origins = state.origins as OriginWithIndexedDB[];
+  const databases = origins.flatMap((origin) => origin.indexedDB ?? []);
+  const stores = databases.flatMap((database) => database.stores);
+  const messageStore = stores.find((store) => store.name === "messages");
+  const messages = (messageStore?.records ?? []).map(
+    (record) => (record.value as { message: Message }).message,
   );
 
   return messages
-    .sort((a, b) => a.createdAt - b.createdAt)
+    .toSorted((a, b) => a.createdAt - b.createdAt)
     .map((message) => (message.deletedAt ? "(deleted)" : message.text));
 };
+
+export const recordSentFrames = (page: Page) =>
+  page.addInitScript(() => {
+    const frames: string[] = [];
+    const original: (this: RTCDataChannel, data: string) => void =
+      RTCDataChannel.prototype.send;
+    function recording(this: RTCDataChannel, data: string) {
+      frames.push(data);
+      original.call(this, data);
+    }
+    RTCDataChannel.prototype.send = recording as RTCDataChannel["send"];
+    Object.assign(window, { sentFrames: frames });
+  });
+
+export const sentFrames = (page: Page) =>
+  page.evaluate(
+    () => (window as unknown as { sentFrames: string[] }).sentFrames,
+  );

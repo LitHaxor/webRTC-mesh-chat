@@ -1,4 +1,4 @@
-import { CheckCheck, Pencil, Trash2 } from "lucide-react";
+import { CheckCheck, Clock, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Message } from "../types/message.ts";
 import { formatRelativeTime, formatTime } from "../utils/formatTime.ts";
@@ -23,6 +23,7 @@ type Props = {
   message: Message;
   isOwn: boolean;
   isSeen: boolean;
+  isSending: boolean;
   now: number;
   onEdit: (id: string, text: string) => boolean;
   onDelete: (id: string) => boolean;
@@ -32,6 +33,7 @@ const MessageItem = ({
   message,
   isOwn,
   isSeen,
+  isSending,
   now,
   onEdit,
   onDelete,
@@ -96,6 +98,9 @@ const MessageItem = ({
           <time title={formatTime(message.createdAt)}>
             {formatRelativeTime(message.createdAt, now)}
           </time>
+          {isSending && (
+            <Clock aria-label="Sending" className="size-4 text-neutral-400" />
+          )}
           {isSeen && (
             <CheckCheck aria-label="Seen" className="size-4 text-blue-600" />
           )}

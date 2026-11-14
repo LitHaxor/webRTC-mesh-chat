@@ -1,4 +1,5 @@
 import type { Room } from "../types/room.ts";
+import { secureChannel } from "./secureChannel.ts";
 import { signaling } from "./signaling/index.ts";
 
 const servers: RTCConfiguration = {
@@ -24,16 +25,20 @@ const createPeer = () => {
     negotiated: true,
     id: 0,
   });
-  channel.onmessage = (event) => handleMessage(event.data);
-  channel.onopen = () => handleOpen();
+  const secure = secureChannel(channel, (text) => handleMessage(text));
+  channel.onmessage = (event) => secure.receive(event.data);
+  channel.onopen = () => {
+    secure.start();
+    handleOpen();
+  };
   channel.onclose = async () => {
     handleClose();
     await reconnect();
   };
-  return { pc, channel };
+  return { pc, channel, secure };
 };
 
-let { pc, channel } = createPeer();
+let { pc, channel, secure } = createPeer();
 
 window.addEventListener("pagehide", () => pc.close());
 
@@ -41,7 +46,7 @@ const reconnect = async () => {
   stopWaitingForAnswer();
   channel.onclose = null;
   pc.close();
-  ({ pc, channel } = createPeer());
+  ({ pc, channel, secure } = createPeer());
   try {
     await hostRoom(roomId);
   } catch (error) {
@@ -86,9 +91,8 @@ export const onClose = (handler: () => void) => {
 };
 
 export const sendData = (data: string) => {
-  if (channel.readyState !== "open") return false;
-  channel.send(data);
-  return true;
+  if (channel.readyState !== "open") return null;
+  return secure.send(data);
 };
 
 export const watchRooms = (onChange: (rooms: Room[]) => void) =>

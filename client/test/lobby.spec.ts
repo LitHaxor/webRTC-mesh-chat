@@ -56,3 +56,12 @@ test("a room disappears from the lobby when its host leaves", async ({
   await alice.close();
   await expect(lobbyListing(carol, roomName)).toHaveCount(0);
 });
+
+test("on a phone the app fills the whole screen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  const box = await page.locator("main > div").boundingBox();
+
+  expect(box).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
+});

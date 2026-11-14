@@ -59,6 +59,7 @@ export type ChatSlice = {
   events: (ChatEvent | RoomEvent)[];
   typing: string | null;
   seenId: string | null;
+  sendingIds: string[];
   addEvent: (event: ChatEvent | RoomEvent) => void;
   updateMessage: (message: Message) => boolean;
   send: (text: string) => boolean;
@@ -101,11 +102,21 @@ export const createChatSlice: StateCreator<
     return updateMessage(message);
   };
 
+  const finishSending = async (id: string, sending: Promise<boolean>) => {
+    if (!(await sending)) {
+      return;
+    }
+    set((state) => ({
+      sendingIds: state.sendingIds.filter((pending) => pending !== id),
+    }));
+  };
+
   return {
     userId,
     events: [],
     typing: null,
     seenId: null,
+    sendingIds: [],
     addEvent: (event) => {
       set((state) => ({ events: [...state.events, event] }));
       if ("payload" in event) {
@@ -155,11 +166,14 @@ export const createChatSlice: StateCreator<
         payload: { message, metadata: {} },
       };
 
-      if (!sendData(JSON.stringify(event))) {
+      const sending = sendData(JSON.stringify(event));
+      if (!sending) {
         return false;
       }
 
       addEvent(event);
+      set((state) => ({ sendingIds: [...state.sendingIds, message.id] }));
+      void finishSending(message.id, sending);
 
       return true;
     },

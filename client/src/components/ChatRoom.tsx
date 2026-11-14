@@ -45,6 +45,7 @@ const ChatRoom = () => {
     userId,
     typing,
     seenId,
+    sendingIds,
     send,
     edit,
     remove,
@@ -58,6 +59,7 @@ const ChatRoom = () => {
       userId: state.userId,
       typing: state.typing,
       seenId: state.seenId,
+      sendingIds: state.sendingIds,
       send: state.send,
       edit: state.edit,
       remove: state.remove,
@@ -110,6 +112,7 @@ const ChatRoom = () => {
           events={events}
           userId={userId}
           seenId={seenId}
+          sendingIds={sendingIds}
           onEdit={edit}
           onDelete={remove}
         />
