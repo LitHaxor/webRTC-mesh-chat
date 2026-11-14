@@ -22,6 +22,7 @@ const findMessage = (events: (ChatEvent | RoomEvent)[], id: string) => {
 };
 
 export type ChatSlice = {
+  userId: string;
   events: (ChatEvent | RoomEvent)[];
   addEvent: (event: ChatEvent | RoomEvent) => void;
   updateMessage: (message: Message) => boolean;
@@ -35,6 +36,7 @@ export const createChatSlice: StateCreator<
   [],
   ChatSlice
 > = (set, get) => ({
+  userId,
   events: [],
   addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
   updateMessage: (message) => {

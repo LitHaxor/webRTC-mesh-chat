@@ -15,6 +15,8 @@ const App = () => {
   const join = useStore((state) => state.join);
   const create = useStore((state) => state.create);
   const send = useStore((state) => state.send);
+  const edit = useStore((state) => state.edit);
+  const userId = useStore((state) => state.userId);
   const [tab, setTab] = useState<"participants" | "chat">("chat");
 
   const participants = name ? getParticipants(name, peer, events) : [];
@@ -61,7 +63,7 @@ const App = () => {
               <ParticipantList participants={participants} />
             )}
             <div hidden={tab !== "chat"} className="flex min-h-0 flex-1 flex-col">
-              <MessageList events={events} />
+              <MessageList events={events} userId={userId} onEdit={edit} />
               <MessageForm onSend={send} />
             </div>
           </>

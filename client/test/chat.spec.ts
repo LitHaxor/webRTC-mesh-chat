@@ -36,6 +36,17 @@ test("two people chat in a room one of them created", async ({ browser }) => {
   await alice.getByRole("button", { name: "Send" }).click();
   await expect(bob.getByRole("list")).toContainText("hi bob");
 
+  const aliceMessage = alice.getByRole("listitem").filter({ hasText: "hi bob" });
+  await aliceMessage.hover();
+  await aliceMessage.getByRole("button", { name: "Edit message" }).click();
+  await alice.getByRole("textbox", { name: "Edit message" }).fill("hi bob, edited");
+  await alice.keyboard.press("Enter");
+  const bobsCopy = bob.getByRole("listitem").filter({ hasText: "hi bob, edited" });
+  await expect(bobsCopy).toContainText("(edited)");
+  await expect(
+    bobsCopy.getByRole("button", { name: "Edit message" }),
+  ).toHaveCount(0);
+
   await enterName(bob, "Bob");
   await expect(alice.getByRole("list")).toContainText("Bob left");
   await joinRoom(bob, roomName);
