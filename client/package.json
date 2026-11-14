@@ -16,6 +16,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.3.5",
     "@vitest/coverage-v8": "^5.1.0",
+    "@tanstack/react-virtual": "^3.14.26",
     "axios": "^1.21.1",
     "emoji-picker-react": "^5.1.4",
     "firebase": "^13.3.0",

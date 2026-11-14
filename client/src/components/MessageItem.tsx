@@ -68,7 +68,7 @@ const MessageItem = ({
   };
 
   return (
-    <li className="group">
+    <div className="group">
       <div className="flex items-baseline justify-between gap-2">
         <p className="min-w-0 truncate font-semibold">{message.userName}</p>
         <div className="flex shrink-0 items-center gap-2 text-sm whitespace-nowrap text-neutral-600">
@@ -122,7 +122,7 @@ const MessageItem = ({
       )}
       {isDeleted && <p className="italic text-neutral-500">Message deleted</p>}
       {!isDeleted && !isEditing && <MessageBody text={message.text} />}
-    </li>
+    </div>
   );
 };
 

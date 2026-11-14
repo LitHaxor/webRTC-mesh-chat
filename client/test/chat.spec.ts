@@ -2,6 +2,7 @@ import {
   chatOf,
   expect,
   messageRow,
+  savedTexts,
   sendMessage,
   startChat,
   test,
@@ -51,14 +52,16 @@ test("scrolling up shows a button that jumps back to the newest message", async 
   }
   await expect(messageRow(bob, "message 15")).toBeInViewport();
 
-  await chatOf(bob).evaluate((list) => list.scrollTo({ top: 0 }));
+  await chatOf(bob).evaluate((list) =>
+    list.parentElement?.scrollTo({ top: 0 }),
+  );
   const jump = bob.getByRole("button", {
     name: "Scroll to the newest message",
   });
   await expect(jump).toBeVisible();
 
   await sendMessage(alice, "while you were away");
-  await expect(messageRow(bob, "while you were away")).toBeAttached();
+  await expect.poll(() => savedTexts(bob)).toContain("while you were away");
   await expect(messageRow(bob, "while you were away")).not.toBeInViewport();
 
   await jump.click();

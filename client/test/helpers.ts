@@ -1,12 +1,15 @@
 import {
   test as base,
   expect,
+  type Browser,
   type BrowserContext,
   type Page,
 } from "@playwright/test";
+import { faker } from "@faker-js/faker";
 import type { Message } from "../src/types/message.ts";
 
 export { expect };
+export type { Browser, Page };
 
 type NewPerson = () => Promise<Page>;
 
@@ -116,4 +119,96 @@ export const recordSentFrames = (page: Page) =>
 export const sentFrames = (page: Page) =>
   page.evaluate(
     () => (window as unknown as { sentFrames: string[] }).sentFrames,
+  );
+
+export const trackRoomIds = (page: Page) => {
+  const ids = new Map<string, string>();
+  page.on("websocket", (socket) => {
+    socket.on("framereceived", ({ payload }) => {
+      const message = JSON.parse(String(payload));
+      if (message.type !== "rooms") return;
+      for (const room of message.rooms) {
+        ids.set(room.name, room.id);
+      }
+    });
+  });
+  return ids;
+};
+
+export const NEWEST_SEEDED = "That's everything so far.";
+
+const QUICK_REPLIES = [
+  "Agreed.",
+  "On it.",
+  "Thanks!",
+  "Can you share the file with us?",
+  "Give me five minutes.",
+  "Who is taking notes today?",
+  "Sounds good to me.",
+];
+
+const fakeText = () => {
+  const write = faker.helpers.weightedArrayElement([
+    { weight: 5, value: () => faker.hacker.phrase() },
+    { weight: 3, value: () => faker.helpers.arrayElement(QUICK_REPLIES) },
+    {
+      weight: 1,
+      value: () => `${faker.hacker.phrase()} ${faker.company.catchPhrase()}.`,
+    },
+    { weight: 1, value: () => faker.internet.emoji() },
+  ]);
+  return write();
+};
+
+export const fakeConversation = (count: number, ownId: string): Message[] => {
+  faker.seed(count);
+  const others = faker.helpers.multiple(
+    () => ({
+      userId: faker.string.uuid(),
+      userName: faker.person.firstName(),
+    }),
+    { count: 5 },
+  );
+  const people = [{ userId: ownId, userName: "Bob" }, ...others];
+  let createdAt = Date.now() - count * 30_000;
+
+  return Array.from({ length: count }, (_, index) => {
+    createdAt += faker.number.int({ min: 2000, max: 58_000 });
+    const isNewest = index === count - 1;
+    return {
+      id: faker.string.uuid(),
+      ...faker.helpers.arrayElement(people),
+      text: isNewest ? NEWEST_SEEDED : fakeText(),
+      createdAt,
+    };
+  });
+};
+
+export const ownUserId = (page: Page) =>
+  page.evaluate(() => sessionStorage.getItem("userId") ?? "");
+
+export const seedConversation = (
+  page: Page,
+  roomId: string,
+  messages: Message[],
+) =>
+  page.evaluate(
+    async ({ roomId, messages }) => {
+      const opening = indexedDB.open("chat");
+      const opened = Promise.withResolvers<IDBDatabase>();
+      opening.onsuccess = () => opened.resolve(opening.result);
+      opening.onerror = () => opened.reject(opening.error);
+      const db = await opened.promise;
+      const transaction = db.transaction("messages", "readwrite");
+      const store = transaction.objectStore("messages");
+      for (const message of messages) {
+        store.put({ roomId, message });
+      }
+      const saved = Promise.withResolvers<void>();
+      transaction.oncomplete = () => saved.resolve();
+      transaction.onerror = () => saved.reject(transaction.error);
+      await saved.promise;
+      db.close();
+    },
+    { roomId, messages },
   );

@@ -1,4 +1,11 @@
-import { expect, messageRow, sendMessage, startChat, test } from "./helpers.ts";
+import {
+  expect,
+  messageRow,
+  savedTexts,
+  sendMessage,
+  startChat,
+  test,
+} from "./helpers.ts";
 
 test("the other person sees you typing until you send", async ({
   newPerson,
@@ -33,7 +40,7 @@ test("a message is only Seen once the other person opens the chat", async ({
   await bob.getByRole("tab", { name: "Participants (2)" }).click();
 
   await sendMessage(alice, "are you there?");
-  await expect(bob.getByText("are you there?")).toBeAttached();
+  await expect.poll(() => savedTexts(bob)).toContain("are you there?");
   const seen = messageRow(alice, "are you there?").getByLabel("Seen");
   await expect(seen).toHaveCount(0);
 
