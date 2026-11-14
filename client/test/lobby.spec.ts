@@ -8,19 +8,22 @@ import {
   uniqueRoomName,
 } from "./helpers.ts";
 
-test("Join and Create stay disabled until you enter a name", async ({
+test("Create turns blue once the room has a name, and asks for yours first", async ({
   page,
 }) => {
   await page.goto("/");
+  const create = page.getByRole("button", { name: "Create" });
   await expect(
     page.getByText("Enter your name to join or create a room"),
   ).toBeVisible();
+  await expect(create).toBeDisabled();
 
   await page.getByPlaceholder("New room name").fill("Standup");
-  await expect(page.getByRole("button", { name: "Create" })).toBeDisabled();
+  await expect(create).toBeEnabled();
 
-  await page.getByPlaceholder("Your name").fill("Alice");
-  await expect(page.getByRole("button", { name: "Create" })).toBeEnabled();
+  await create.click();
+  await expect(page.getByPlaceholder("Your name")).toBeFocused();
+  await expect(page.getByRole("heading", { name: "Chat rooms" })).toBeVisible();
 });
 
 test("a new room is listed in the lobby until someone joins it", async ({
